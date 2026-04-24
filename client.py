@@ -14,32 +14,27 @@ stop_thread = False #variable to stop threads when needed
 #function to receive messages from the server
 def receive():
     while True:
-        global stop_thread #global variable to stop thread in the beginning if needed
-        if stop_thread: break
+        global stop_thread #using global variable to stop the thread when needed
+        if stop_thread:
+            break
         try:
-            message = client.recv(1024).decode('ascii') #receives message of 1024 bytes from server, decodes it
-            if message == 'NICKNAME': #if the server is asking for a nickname
-                client.send(nickname.encode('ascii')) #send the nickname to the server
-                next_message = client.recv(1024).decode('ascii') #receives next message from the server
-                if next_message == 'PASSWORD': 
-                    if nickname == 'admin':
-                        client.send(password.encode('ascii')) 
-                    #catch the response first
-                    response = client.recv(1024).decode('ascii') 
-                    
-                    if response == 'INCORRECT_PASSWORD': 
-                        print('Connection refused! Wrong password.')
-                        stop_thread = True 
-                    else:
-                        #if password was correct, print the welcome message
-                        print(response)
-
-                elif next_message == 'BAN': #if server sends a ban message
-                    print('Connection refused! You are banned from the server.')
+            message = client.recv(1024).decode('ascii') #recieve message from server and decode it
+            if message == 'NICKNAME': #server is asking for nickname
+                client.send(nickname.encode('ascii')) #send nickname to server
+                next_message = client.recv(1024).decode('ascii') #receive next message from server
+                if next_message == 'PASSWORD':
+                    client.send(password.encode('ascii')) #send password to server
+                    if client.recv(1024).decode('ascii') == 'INCORRECT_PASSWORD': #if password is wrong server will refuse connection
+                        print("Connection was refused! Wrong password!")
+                        stop_thread = True #stop the thread
+                elif next_message == 'BAN':
+                    print('Connection refused because of ban!')
                     client.close()
-                    stop_thread = True #stop the thread if banned
+                    stop_thread = True #stop the thread
+                else:
+                    print(next_message) #if nickname accepted, print welcome message
             else:
-                print(message) #print message from the server
+                print(message)
         except:
             print('An error occurred!') #print error message error and close client connection
             client.close()
