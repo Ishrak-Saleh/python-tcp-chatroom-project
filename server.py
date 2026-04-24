@@ -22,16 +22,16 @@ def broadcast(message):
 def handle(client):
     while True:
         try:
-            msg = message = client.recv(1024) #receives message from the client, if there is error, it means the client disconnected
-            if msg.decode('ascii').startswith('KICK'): #if the message starts with kick, it's a kick command
+            message = client.recv(1024) #receives message from the client, if there is error, it means the client disconnected
+            if message.decode('ascii').startswith('KICK'): #if the message starts with kick, it's a kick command
                 if nicknames[clients.index(client)] == 'admin': #only admin can kick
-                    name_to_kick = msg.decode('ascii')[5:] #gets the nickname to kick from the message
+                    name_to_kick = message.decode('ascii')[5:] #gets the nickname to kick from the message
                     kick_user(name_to_kick)
                 else: client.send('Commands can only be executed by the admin!'.encode('ascii')) #if not admin, send error message
 
-            elif msg.decode('ascii').startswith('BAN'): #if the message starts with ban, it's a ban command
+            elif message.decode('ascii').startswith('BAN'): #if the message starts with ban, it's a ban command
                 if nicknames[clients.index(client)] == 'admin': #only admin can ban
-                    name_to_ban = msg.decode('ascii')[4:] #gets the nickname to ban from the message
+                    name_to_ban = message.decode('ascii')[4:] #gets the nickname to ban from the message
                     kick_user(name_to_ban) #kick user first
                     with open('bans.txt', 'a') as f: #add the nickname to the bans.txt file (appending mode)
                         f.write(f'{name_to_ban}\n')

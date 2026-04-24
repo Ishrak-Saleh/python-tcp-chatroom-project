@@ -3,6 +3,8 @@ import threading
 
 nickname = input('Choose a nickname: ') #asking user for a nickname
 password = "" #password variable
+
+
 if nickname == 'admin':
     password = input('Enter admin password: ') #ask admin for password
 
@@ -44,15 +46,17 @@ def receive():
 def write():
     while True:
         if stop_thread: break
+        user_input = input("") #taking input from user
+        message = f'{nickname}: {user_input}' #takes input from user, formats it with the nickname
 
-        message = f'{nickname}: {input("")}' #takes input from user, formats it with the nickname
-
-        if message[len(nickname)+2:].startswith('/'): #if the msg starts with a slash, it's a command
+        if user_input.startswith('/'): #if the msg starts with a slash, it's a command
             if nickname == 'admin':
-                if message[len(nickname)+2:].startswith('/kick'): #if the command is kick
-                    client.send(f'KICK {message[len(nickname)+2+6:]}'.encode('ascii')) #send kick command to the server with the nickname to kick
-                elif message[len(nickname)+2:].startswith('/ban'): #if the command is ban
-                    client.send(f'BAN {message[len(nickname)+2+5:]}'.encode('ascii')) #send ban command to the server with the nickname to ban
+                if user_input.startswith('/kick'): #if the command is kick
+                    name_to_kick = user_input[6:] #get the nickname to kick from the command
+                    client.send(f'KICK {name_to_kick}'.encode('ascii')) #send kick command to the server with the nickname to kick
+                elif user_input.startswith('/ban'): #if the command is ban
+                    name_to_ban = user_input[5:] #get the nickname to ban from the command
+                    client.send(f'BAN {name_to_ban}'.encode('ascii')) #send ban command to the server with the nickname to ban
             else:
                 print('Command can only be executed by the admin!') #if not admin, print error message
         
