@@ -66,7 +66,7 @@ def receive():
 
         with open('bans.txt', 'r') as f: #opens the bans.txt file in read mode
             bans = f.readlines()
-            
+
         if nickname+'\n' in bans: #if the nickname is in the bans list
             client.send('BAN'.encode('ascii')) #sends ban message to the client
             client.close()
@@ -87,8 +87,9 @@ def receive():
         clients.append(client)
 
         print(f'{client}\'s nickname is {nickname}!') #prints client nickname
-        broadcast(f'{nickname} joined the chat!'.encode('ascii')) #broadcasts message every client
         client.send('Connected to the server!'.encode('ascii')) #sends connection message to the client
+        broadcast(f'{nickname} joined the chat!'.encode('ascii')) #broadcasts message every client
+
 
         thread = threading.Thread(target=handle, args=(client,)) #creates one thread for each client with a handle function to handle client connection
         thread.start() #starting thread
