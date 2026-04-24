@@ -1,5 +1,5 @@
 import sys
-sys.path.append('..')
+sys.path.append('..') #for parent directory imports
 
 import socket
 import threading

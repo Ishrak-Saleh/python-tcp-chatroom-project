@@ -3,7 +3,7 @@
 #executes commands if there are any, broadcasts normal messages to all clients
 
 import sys
-sys.path.append('..')
+sys.path.append('..') #for parent directory imports
 
 from server.server import clients, nicknames, broadcast
 from config import MAX_BUFFER
