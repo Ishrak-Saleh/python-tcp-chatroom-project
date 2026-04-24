@@ -1,0 +1,4 @@
+HOST = '127.0.0.1'
+PORT = 65535
+MAX_BUFFER = 1024
+APP_NAME = 'ChatBuzz'
