@@ -58,13 +58,10 @@ def write():
                     client.send(f'KICK {message[len(nickname)+2+6:]}'.encode('ascii')) #send kick command to the server with the nickname to kick
                 elif message[len(nickname)+2:].startswith('/ban'): #if the command is ban
                     client.send(f'BAN {message[len(nickname)+2+5:]}'.encode('ascii')) #send ban command to the server with the nickname to ban
-                else:
-                    print('Unknown command!') #print unknown command if the command is not recognized
-            else: print('Commands can only be executed by the admin!')
-    
-            
+            else:
+                print('Command can only be executed by the admin!') #if not admin, print error message
         
-        client.send(message.encode('ascii')) #sends message to the server
+        else: client.send(message.encode('ascii')) #send the message to the server
 
 
 receive_thread = threading.Thread(target=receive) #thread for receiving messages
