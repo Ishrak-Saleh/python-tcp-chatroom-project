@@ -6,6 +6,18 @@ import threading
 import customtkinter as ctk
 from config import HOST, PORT, MAX_BUFFER, APP_NAME
 
+#chatbuzz color pallete
+BG_DARK      = '#080d08'
+BG_MID       = '#0a0f0a'
+BG_PANEL     = '#0d150d'
+GREEN_BRIGHT = '#33cc33'
+GREEN_DIM    = '#1f5a1f'
+GREEN_MID    = '#2a7a2a'
+BORDER       = '#1a3a1a'
+FONT_MONO    = ('Courier', 12)
+FONT_MONO_SM = ('Courier', 11)
+FONT_MONO_LG = ('Courier', 14)
+
 #main theme for application
 ctk.set_appearance_mode('dark')
 ctk.set_default_color_theme('green')
@@ -20,20 +32,71 @@ class ChatBuzzApp:
         self.login_destroyed = False #flag to check if login window is destroyed, to prevent multiple error messages on failed connection attempts
 
         #creating login window using customtkinter
+        #login window
         self.login_window = ctk.CTk()
-        self.login_window.title(f'{APP_NAME} - Login')
-        self.login_window.geometry('400x300')
+        self.login_window.title(APP_NAME)
+        self.login_window.geometry('420x280')
+        self.login_window.configure(fg_color=BG_DARK)
+        self.login_window.resizable(False, False)
 
-        #label and entry for nickname
-        self.nickname_label = ctk.CTkLabel(self.login_window, text='Enter your nickname')
-        self.nickname_input = ctk.CTkEntry(self.login_window, placeholder_text='nickname...') #placeholder text for input field
-        self.entry_button = ctk.CTkButton(self.login_window, text='Connect', command=self.login) #calls login function when button is clicked
+        #ascii header
+        ctk.CTkLabel(
+            self.login_window,
+            text=f'> {APP_NAME} // SECURE TERMINAL',
+            font=FONT_MONO_LG,
+            text_color=GREEN_BRIGHT
+        ).pack(pady=(28, 4))
 
-        #putting padding around widgets, packing them into 400x300 window
-        self.nickname_label.pack(pady=10)
-        self.nickname_input.pack(pady=10)
-        self.entry_button.pack(pady=10)
+        ctk.CTkLabel(
+            self.login_window,
+            text='──────────────────────────────',
+            font=FONT_MONO_SM,
+            text_color=GREEN_DIM
+        ).pack()
 
+        #nickname input label
+        ctk.CTkLabel(
+            self.login_window,
+            text='ENTER USERNAME:',
+            font=FONT_MONO_SM,
+            text_color=GREEN_BRIGHT
+        ).pack(pady=(16, 4))
+
+        #nickname input field
+        self.nickname_input = ctk.CTkEntry(
+            self.login_window,
+            placeholder_text='text here...',
+            font=FONT_MONO,
+            fg_color=BG_PANEL,
+            border_color=BORDER,
+            text_color=GREEN_BRIGHT,
+            width=260
+        )
+        self.nickname_input.pack(pady=4)
+        self.nickname_input.bind('<Return>', lambda e: self.login())
+
+        #error label — empty by default, shows red text on errors
+        self.login_error = ctk.CTkLabel(
+            self.login_window,
+            text='',
+            font=FONT_MONO_SM,
+            text_color='#cc3333'
+        )
+        self.login_error.pack()
+
+        #connect button
+        ctk.CTkButton(
+            self.login_window,
+            text='[ CONNECT ]',
+            font=FONT_MONO,
+            fg_color=BG_PANEL,
+            hover_color='#1a4a1a',
+            border_width=1,
+            border_color=GREEN_MID,
+            text_color=GREEN_BRIGHT,
+            width=260,
+            command=self.login
+        ).pack(pady=8)
     def run(self):
         self.login_window.mainloop() #starts the login window, keeps running until closed
 
