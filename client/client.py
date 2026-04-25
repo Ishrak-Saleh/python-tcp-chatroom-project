@@ -220,37 +220,99 @@ class ChatBuzzApp:
             self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #fresh socket instance for each connection attempt
             self.client.connect((HOST, PORT)) #connects to server using config host and port
 
-            #create chat window
+            #chat window
             self.chat_window = ctk.CTk()
-            self.chat_window.title(f'{APP_NAME} - {self.nickname}')
-            self.chat_window.geometry('500x500')
+            self.chat_window.title(f'{APP_NAME} // {self.nickname.upper()}')
+            self.chat_window.geometry('780x540')
+            self.chat_window.configure(fg_color=BG_DARK)
+            self.chat_window.withdraw() #hide until login confirmed
 
-            self.chat_window.withdraw()  #hide chat window till login is successful
+            #top bar
+            top_bar = ctk.CTkFrame(self.chat_window, fg_color=BG_PANEL, corner_radius=0, height=36)
+            top_bar.pack(fill='x')
+            top_bar.pack_propagate(False)
+
+            ctk.CTkLabel(
+                top_bar,
+                text=f'{APP_NAME} // v1.0.0 // SECURE TERMINAL',
+                font=FONT_MONO_SM,
+                text_color=GREEN_DIM
+            ).pack(side='left', padx=14, pady=8)
+
+            ctk.CTkLabel(
+                top_bar,
+                text=f'NODE: {self.nickname.upper()}',
+                font=FONT_MONO_SM,
+                text_color=GREEN_MID
+            ).pack(side='right', padx=14)
 
             #chat display
-            self.chat_box = ctk.CTkTextbox(self.chat_window, state='disabled')
+            self.chat_box = ctk.CTkTextbox(
+                self.chat_window,
+                font=FONT_MONO_SM,
+                fg_color=BG_MID,
+                text_color=GREEN_BRIGHT,
+                border_color=BORDER,
+                border_width=1,
+                wrap='word'
+            )
             self.chat_box.pack(padx=10, pady=10, fill='both', expand=True)
+            self.chat_box.configure(state='disabled')
 
             #bottom bar
-            self.input_frame = ctk.CTkFrame(self.chat_window)
-            self.input_frame.pack(padx=10, pady=5, fill='x')
+            bottom_bar = ctk.CTkFrame(self.chat_window, fg_color=BG_PANEL, corner_radius=0, height=44)
+            bottom_bar.pack(fill='x', side='bottom')
+            bottom_bar.pack_propagate(False)
 
-            #message input field
-            self.message_input = ctk.CTkEntry(self.input_frame, placeholder_text='Type a message...')
-            self.message_input.pack(side='left', fill='x', expand=True, padx=5)
+            #prompt label
+            ctk.CTkLabel(
+                bottom_bar,
+                text=f'{self.nickname}@chatbuzz:~$',
+                font=FONT_MONO_SM,
+                text_color=GREEN_BRIGHT
+            ).pack(side='left', padx=(12,4), pady=10)
 
-            self.message_input.bind('<Return>', lambda e: self.send_message()) #user can press Enter to send message
+            #message input
+            self.message_input = ctk.CTkEntry(
+                bottom_bar,
+                font=FONT_MONO_SM,
+                fg_color=BG_PANEL,
+                border_width=0,
+                text_color=GREEN_BRIGHT,
+                placeholder_text='type a message or /command...',
+                placeholder_text_color=GREEN_DIM
+            )
+            self.message_input.pack(side='left', fill='x', expand=True, pady=8)
+            self.message_input.bind('<Return>', lambda e: self.send_message()) #enter key to send
+
+            #command hint
+            ctk.CTkLabel(
+                bottom_bar,
+                text='/kick /ban /unban /who /dm',
+                font=('Courier', 9),
+                text_color=GREEN_DIM
+            ).pack(side='right', padx=4)
 
             #send button
-            self.send_button = ctk.CTkButton(self.input_frame, text='Send', width=80, command=self.send_message)
-            self.send_button.pack(side='right', padx=5)
+            ctk.CTkButton(
+                bottom_bar,
+                text='SEND',
+                font=FONT_MONO_SM,
+                fg_color=BG_PANEL,
+                hover_color='#1a4a1a',
+                border_width=1,
+                border_color=GREEN_MID,
+                text_color=GREEN_BRIGHT,
+                width=70,
+                command=self.send_message
+            ).pack(side='right', padx=10, pady=8)
 
             thread = threading.Thread(target=self.receive) #create thread for receiving messages
             thread.daemon = True #thread closes automatically when main program exits
             thread.start()
 
-            self.chat_window.protocol('WM_DELETE_WINDOW', self.on_close) #handle window close event to clean up resources
-            self.chat_window.mainloop() #start chat window, keep running until closed
+            self.chat_window.protocol('WM_DELETE_WINDOW', self.on_close) #handle window close
+            self.chat_window.mainloop() #start chat window, keeps running until closed
 
         except Exception as e:
             self.login_error.configure(text='[ERR] connection failed — is server running?') #error message if connection fails
