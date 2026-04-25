@@ -13,7 +13,7 @@ BG_PANEL     = '#0d150d'
 GREEN_BRIGHT = '#33cc33'
 GREEN_DIM    = "#4cb94c"
 GREEN_DARK   = '#2a7a2a'
-GREEN_DARKER  = '#1a3a1a'
+GREEN_DARKER = '#1a3a1a'
 BORDER       = "#112711"
 FONT_MONO    = ('Courier', 14)
 FONT_MONO_SM = ('Courier', 13)
@@ -128,6 +128,18 @@ class ChatBuzzApp:
                 ctk.CTkLabel(self.online_frame, text=f'● {user}', font=FONT_MONO_SM, text_color=color).pack(pady=2, anchor='w')
         self.online_header.configure(text=f'// ONLINE ({len([u for u in users if u])})') #update count
 
+    #function to disable chat input when user is kicked or banned
+    def disable_chat(self, reason):
+        self.message_input.configure(
+            state='disabled', #disable input field
+            placeholder_text=f'[ {reason} ]', #show reason in placeholder
+            fg_color='#050a05' #darker background to signal disabled state
+        )
+        self.send_button.configure(
+            state='disabled', #disable send button
+            fg_color='#050a05', #darker background
+            text_color='#1a3a1a' #dim text to signal disabled state
+        )
 
     #function to receive messages from server, runs in a separate thread
     def receive(self):
@@ -174,6 +186,12 @@ class ChatBuzzApp:
                             self.chat_window.after(0, self.chat_window.deiconify) #show chat window
                             if self.pending_online_list: #apply stored online list if it arrived before window was ready
                                 self.chat_window.after(100, lambda u=self.pending_online_list: self.update_online_list(u))
+
+                        if 'has been kicked' in message or 'has been banned' in message:
+                            username = message.split(' ')[0] #first word is always the username
+                            if username == self.nickname: #if it's this client who was kicked/banned
+                                reason = 'you were kicked' if 'kicked' in message else 'you were banned'
+                                self.chat_window.after(0, lambda r=reason: self.disable_chat(r))
 
                         self.chat_window.after(0, lambda msg=message: self.display_message(msg)) #display message in chat window
 
@@ -244,15 +262,6 @@ class ChatBuzzApp:
         self.chat_window.destroy()
         sys.exit() #force exit to ensure all threads are closed, daemon threads may not close properly on their own (fix)
 
-    #function to refresh online users list in sidebar with full list from server
-    def refresh_online_list(self, users):
-        self.online_users = users #replace entire list with updated list from server
-        for widget in self.online_frame.winfo_children(): #clear existing labels
-            widget.destroy()
-        for user in self.online_users: #add one label per user
-            color = GREEN_BRIGHT if user == self.nickname else GREEN_DARK #highlight self in bright green
-            ctk.CTkLabel(self.online_frame, text=f'● {user}', font=FONT_MONO_SM, text_color=color).pack(anchor='w', pady=1)
-        self.online_header.configure(text=f'// ONLINE ({len(self.online_users)})') #update header count
 
     #function to setup socket connection, connect to server, start chat window
     def setup_socket(self):
@@ -279,7 +288,9 @@ class ChatBuzzApp:
             bottom_bar.pack(fill='x', side='bottom')
             bottom_bar.pack_propagate(False)
             ctk.CTkLabel(bottom_bar, text=f'{self.nickname}@chatbuzz:~$', font=FONT_MONO_SM, text_color=GREEN_BRIGHT).pack(side='left', padx=(12,4), pady=10)
-            ctk.CTkButton(bottom_bar, text='SEND', font=FONT_MONO_SM, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_DARK, text_color=GREEN_BRIGHT, width=70, command=self.send_message).pack(side='right', padx=10, pady=8)
+            
+            self.send_button = ctk.CTkButton(bottom_bar, text='SEND', font=FONT_MONO_SM, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_DARK, text_color=GREEN_BRIGHT, width=70, command=self.send_message)
+            self.send_button.pack(side='right', padx=10, pady=8)
             ctk.CTkLabel(bottom_bar, text='/kick /ban /unban', font=FONT_MONO_SM, text_color=GREEN_DARKER).pack(side='right', padx=4)
 
             #message input
