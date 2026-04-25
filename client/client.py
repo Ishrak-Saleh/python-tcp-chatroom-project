@@ -140,8 +140,6 @@ class ChatBuzzApp:
                     message = message.strip() #remove whitespace and newlines
                     if not message: continue #skip empty strings from split
 
-                    print(f'[DEBUG] received: {repr(message)}') #debug log, remove before submission
-
                     if message == 'NICKNAME':
                         self.client.send(self.nickname.encode('ascii')) #sends nickname to server when asked
                         if self.password:
@@ -314,6 +312,8 @@ class ChatBuzzApp:
             self.chat_box = ctk.CTkTextbox(right_frame, font=FONT_MONO, fg_color=BG_MID, text_color=GREEN_BRIGHT, border_color=BORDER, border_width=1, wrap='word')
             self.chat_box.pack(padx=10, pady=10, fill='both', expand=True)
             self.chat_box.configure(state='disabled')
+
+            self.display_message('[SYS] ──── session established ────') #boot message on connect
 
             thread = threading.Thread(target=self.receive) #create thread for receiving messages
             thread.daemon = True #thread closes automatically when main program exits
