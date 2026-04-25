@@ -109,7 +109,7 @@ class ChatBuzzApp:
             self.login_error.configure(text='[ERROR] username cannot be empty')
             return
         if self.nickname == 'admin': #if nickname is admin, ask for password
-            self.password = ctk.CTkInputDialog(text='Enter admin password:', title='Admin Login').get_input()
+            self.password = self.ask_password() #calls function to ask for admin password, stores it in self.password
             if not self.password: #cancelled or empty
                 return
 
@@ -125,7 +125,14 @@ class ChatBuzzApp:
                     if self.password:
                         next_msg = self.client.recv(MAX_BUFFER).decode('ascii') #receives next message from server, checks if it's asking for password
                         if next_msg == 'PASSWORD':
-                            self.client.send(self.password.encode('ascii')) #sends password to server if asked
+                            self.client.send(self.password.encode('ascii')) #sends password to server when asked
+                            auth_response = self.client.recv(MAX_BUFFER).decode('ascii') #receives authentication response from server
+                            if auth_response == 'INCORRECT_PASSWORD': #if incorrect password, close connection and show error message
+                                self.login_window.after(0, lambda: self.login_error.configure(
+                                    text='[REFUSED] incorrect admin password'
+                                ))
+                                return
+                            
                 elif message == 'BAN':
                     self.client.close()
                     self.login_window.after(0, lambda: self.login_error.configure(
@@ -142,6 +149,14 @@ class ChatBuzzApp:
             except:
                 break
 
+    #function to ask admin password using a dialog, returns the entered password
+    def ask_password(self):
+        dialog = ctk.CTkInputDialog(
+            text='ENTER ADMIN KEY:',
+            title=f'{APP_NAME} // ADMIN AUTH',
+        )
+        dialog.configure(fg_color=BG_DARK) #dialog background color
+        return dialog.get_input() #returns input entered by user in dialog
 
     #function to send message to server
     def send_message(self):
@@ -171,7 +186,8 @@ class ChatBuzzApp:
     def on_close(self):
         self.stop_thread = True
         self.client.close()
-        self.chat_window.destroy()  
+        self.chat_window.destroy() 
+        sys.exit() #force exit to ensure all threads are closed, daemon threads may not close properly on their own (fix)
 
 
     #function to setup socket connection, connect to server, start chat window
