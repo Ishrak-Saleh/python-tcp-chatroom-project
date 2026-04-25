@@ -14,9 +14,9 @@ GREEN_BRIGHT = '#33cc33'
 GREEN_DIM    = '#1f5a1f'
 GREEN_MID    = '#2a7a2a'
 BORDER       = '#1a3a1a'
-FONT_MONO    = ('Courier', 12)
-FONT_MONO_SM = ('Courier', 11)
-FONT_MONO_LG = ('Courier', 14)
+FONT_MONO    = ('Courier', 13)
+FONT_MONO_SM = ('Courier', 12)
+FONT_MONO_LG = ('Courier', 15)
 
 #main theme for application
 ctk.set_appearance_mode('dark')
@@ -35,7 +35,7 @@ class ChatBuzzApp:
         #login window
         self.login_window = ctk.CTk()
         self.login_window.title(APP_NAME)
-        self.login_window.geometry('500x300')
+        self.login_window.geometry('500x320')
         self.login_window.configure(fg_color=BG_DARK)
         self.login_window.resizable(False, False)
 
@@ -156,7 +156,7 @@ class ChatBuzzApp:
         #dialog window for admin password input
         dialog = ctk.CTkToplevel(self.login_window)
         dialog.title(f'{APP_NAME} // ADMIN AUTH')
-        dialog.geometry('420x240')
+        dialog.geometry('4600x260')
         dialog.configure(fg_color=BG_DARK)
         dialog.resizable(False, False)
         dialog.grab_set()
@@ -223,95 +223,63 @@ class ChatBuzzApp:
             #chat window
             self.chat_window = ctk.CTk()
             self.chat_window.title(f'{APP_NAME} // {self.nickname.upper()}')
-            self.chat_window.geometry('780x540')
+            self.chat_window.geometry('900x600')
             self.chat_window.configure(fg_color=BG_DARK)
             self.chat_window.withdraw() #hide until login confirmed
 
-            #top bar
+            #top bar — packed first so it stays at top
             top_bar = ctk.CTkFrame(self.chat_window, fg_color=BG_PANEL, corner_radius=0, height=36)
-            top_bar.pack(fill='x')
+            top_bar.pack(fill='x', side='top')
             top_bar.pack_propagate(False)
+            ctk.CTkLabel(top_bar, text=f'{APP_NAME} // v1.0.0 // SECURE TERMINAL', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='left', padx=14, pady=8)
+            ctk.CTkLabel(top_bar, text=f'NODE: {self.nickname.upper()}', font=FONT_MONO_SM, text_color=GREEN_MID).pack(side='right', padx=14)
 
-            ctk.CTkLabel(
-                top_bar,
-                text=f'{APP_NAME} // v1.0.0 // SECURE TERMINAL',
-                font=FONT_MONO_SM,
-                text_color=GREEN_DIM
-            ).pack(side='left', padx=14, pady=8)
-
-            ctk.CTkLabel(
-                top_bar,
-                text=f'NODE: {self.nickname.upper()}',
-                font=FONT_MONO_SM,
-                text_color=GREEN_MID
-            ).pack(side='right', padx=14)
-
-            #chat display
-            self.chat_box = ctk.CTkTextbox(
-                self.chat_window,
-                font=FONT_MONO_SM,
-                fg_color=BG_MID,
-                text_color=GREEN_BRIGHT,
-                border_color=BORDER,
-                border_width=1,
-                wrap='word'
-            )
-            self.chat_box.pack(padx=10, pady=10, fill='both', expand=True)
-            self.chat_box.configure(state='disabled')
-
-            #bottom bar
+            #bottom bar — packed second so it stays at bottom
             bottom_bar = ctk.CTkFrame(self.chat_window, fg_color=BG_PANEL, corner_radius=0, height=44)
             bottom_bar.pack(fill='x', side='bottom')
             bottom_bar.pack_propagate(False)
-
-            #prompt label
-            ctk.CTkLabel(
-                bottom_bar,
-                text=f'{self.nickname}@chatbuzz:~$',
-                font=FONT_MONO_SM,
-                text_color=GREEN_BRIGHT
-            ).pack(side='left', padx=(12,4), pady=10)
+            ctk.CTkLabel(bottom_bar, text=f'{self.nickname}@chatbuzz:~$', font=FONT_MONO_SM, text_color=GREEN_BRIGHT).pack(side='left', padx=(12,4), pady=10)
+            ctk.CTkButton(bottom_bar, text='SEND', font=FONT_MONO_SM, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_MID, text_color=GREEN_BRIGHT, width=70, command=self.send_message).pack(side='right', padx=10, pady=8)
+            ctk.CTkLabel(bottom_bar, text='/kick /ban /unban /who /dm', font=('Courier', 9), text_color=GREEN_DIM).pack(side='right', padx=4)
 
             #message input
-            self.message_input = ctk.CTkEntry(
-                bottom_bar,
-                font=FONT_MONO_SM,
-                fg_color=BG_PANEL,
-                border_width=0,
-                text_color=GREEN_BRIGHT,
-                placeholder_text='type a message or /command...',
-                placeholder_text_color=GREEN_DIM
-            )
+            self.message_input = ctk.CTkEntry(bottom_bar, font=FONT_MONO_SM, fg_color=BG_PANEL, border_width=0, text_color=GREEN_BRIGHT, placeholder_text='type a message or /command...', placeholder_text_color=GREEN_DIM)
             self.message_input.pack(side='left', fill='x', expand=True, pady=8)
             self.message_input.bind('<Return>', lambda e: self.send_message()) #enter key to send
 
-            #command hint
-            ctk.CTkLabel(
-                bottom_bar,
-                text='/kick /ban /unban /who /dm',
-                font=('Courier', 9),
-                text_color=GREEN_DIM
-            ).pack(side='right', padx=4)
+            #main content — fills remaining space between top and bottom bars
+            main_frame = ctk.CTkFrame(self.chat_window, fg_color=BG_DARK)
+            main_frame.pack(fill='both', expand=True)
 
-            #send button
-            ctk.CTkButton(
-                bottom_bar,
-                text='SEND',
-                font=FONT_MONO_SM,
-                fg_color=BG_PANEL,
-                hover_color='#1a4a1a',
-                border_width=1,
-                border_color=GREEN_MID,
-                text_color=GREEN_BRIGHT,
-                width=70,
-                command=self.send_message
-            ).pack(side='right', padx=10, pady=8)
+            #sidebar
+            self.sidebar = ctk.CTkFrame(main_frame, fg_color=BG_PANEL, width=180, corner_radius=0)
+            self.sidebar.pack(side='left', fill='y')
+            self.sidebar.pack_propagate(False) #prevents sidebar from shrinking
+
+            #sidebar channels section
+            ctk.CTkLabel(self.sidebar, text='// CHANNELS', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(pady=(12,4), padx=10, anchor='w')
+            ctk.CTkLabel(self.sidebar, text='# general', font=FONT_MONO_SM, text_color=GREEN_BRIGHT).pack(pady=2, padx=10, anchor='w')
+
+            #sidebar online users section
+            ctk.CTkLabel(self.sidebar, text='──────────────', font=('Courier', 9), text_color=GREEN_DIM).pack(pady=4, padx=10)
+            ctk.CTkLabel(self.sidebar, text='// ONLINE', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(pady=(4,4), padx=10, anchor='w')
+            self.online_label = ctk.CTkLabel(self.sidebar, text=f'● {self.nickname}', font=FONT_MONO_SM, text_color=GREEN_MID)
+            self.online_label.pack(pady=2, padx=10, anchor='w')
+
+            #right chat area
+            right_frame = ctk.CTkFrame(main_frame, fg_color=BG_DARK, corner_radius=0)
+            right_frame.pack(side='left', fill='both', expand=True)
+
+            #chat display
+            self.chat_box = ctk.CTkTextbox(right_frame, font=('Courier', 13), fg_color=BG_MID, text_color=GREEN_BRIGHT, border_color=BORDER, border_width=1, wrap='word')
+            self.chat_box.pack(padx=10, pady=10, fill='both', expand=True)
+            self.chat_box.configure(state='disabled')
 
             thread = threading.Thread(target=self.receive) #create thread for receiving messages
             thread.daemon = True #thread closes automatically when main program exits
             thread.start()
 
-            self.chat_window.protocol('WM_DELETE_WINDOW', self.on_close) #handle window close
+            self.chat_window.protocol('WM_DELETE_WINDOW', self.on_close) #handle window close event
             self.chat_window.mainloop() #start chat window, keeps running until closed
 
         except Exception as e:
