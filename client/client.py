@@ -17,6 +17,8 @@ class ChatBuzzApp:
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.stop_thread = False
 
+        self.login_destroyed = False #flag to check if login window is destroyed, to prevent multiple error messages on failed connection attempts
+
         #creating login window using customtkinter
         self.login_window = ctk.CTk()
         self.login_window.title(f'{APP_NAME} - Login')
@@ -58,7 +60,19 @@ class ChatBuzzApp:
                         next_msg = self.client.recv(MAX_BUFFER).decode('ascii') #receives next message from server, checks if it's asking for password
                         if next_msg == 'PASSWORD':
                             self.client.send(self.password.encode('ascii')) #sends password to server if asked
+                elif message == 'BAN':
+                    self.client.close() #close chat window if banned 
+                    self.login_window.after(0, lambda: ctk.CTkLabel(
+                        self.login_window, 
+                        text='You are banned from this server!', 
+                        text_color='red'
+                        ).pack())
+                    return
+
                 else:
+                    if not self.login_destroyed: #only destroy login window once
+                        self.login_destroyed = True
+                        self.login_window.after(0, self.login_window.destroy) #close login window after successful connection
                     self.display_message(message) #displays message in chat window, replaces print
             except:
                 break
@@ -92,7 +106,6 @@ class ChatBuzzApp:
     def setup_socket(self):
         try:
             self.client.connect((HOST, PORT)) #connects to server using config host and port
-            self.login_window.destroy() #close login window after successful connection
 
             #create chat window
             self.chat_window = ctk.CTk()

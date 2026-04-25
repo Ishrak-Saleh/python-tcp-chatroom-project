@@ -18,6 +18,10 @@ def kick_user(username):
 
 #function to ban user from server
 def ban_user(username):
+    if username == 'admin': 
+        broadcast('You cannot ban an admin!'.encode('ascii'))
+        return
+
     if username in nicknames:
         name_index = nicknames.index(username) #finds index of username in nicknames list
         client_to_ban = clients[name_index] #finds corresponding client using idnex
