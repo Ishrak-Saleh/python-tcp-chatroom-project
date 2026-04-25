@@ -51,7 +51,7 @@ def start():
     server.bind((HOST, PORT)) #server is bound to the localhost on point 1234567
     server.listen() #server is listening for incoming connections
     print('Server is listening...')
-    receive()
+    receive() #call recieve function to start accepting clients
 
 if __name__ == '__main__':
     start()
