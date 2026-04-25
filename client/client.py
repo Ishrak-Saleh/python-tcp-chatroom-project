@@ -151,12 +151,36 @@ class ChatBuzzApp:
 
     #function to ask admin password using a dialog, returns the entered password
     def ask_password(self):
-        dialog = ctk.CTkInputDialog(
-            text='ENTER ADMIN KEY:',
-            title=f'{APP_NAME} // ADMIN AUTH',
-        )
-        dialog.configure(fg_color=BG_DARK) #dialog background color
-        return dialog.get_input() #returns input entered by user in dialog
+        result = [None]  #empty list to store result from nested function, can be modified from inner scope
+        
+        #dialog window for admin password input
+        dialog = ctk.CTkToplevel(self.login_window)
+        dialog.title(f'{APP_NAME} // ADMIN AUTH')
+        dialog.geometry('420x240')
+        dialog.configure(fg_color=BG_DARK)
+        dialog.resizable(False, False)
+        dialog.grab_set()
+
+        #admin auth dialog UI
+        ctk.CTkLabel(dialog, text='> ADMIN AUTH // SECURE TERMINAL', font=FONT_MONO_LG, text_color=GREEN_BRIGHT).pack(pady=(24,4))
+        ctk.CTkLabel(dialog, text='──────────────────────────────', font=FONT_MONO_SM, text_color=GREEN_DIM).pack()
+        ctk.CTkLabel(dialog, text='ENTER ADMIN KEY:', font=FONT_MONO_SM, text_color=GREEN_MID).pack(pady=(16,4))
+
+        #password input field, show='*' to hide input
+        pwd_input = ctk.CTkEntry(dialog, font=FONT_MONO, fg_color=BG_PANEL, border_color=BORDER, text_color=GREEN_BRIGHT, width=260, show='*')
+        pwd_input.pack(pady=4)
+
+        def confirm(): #nested function to get password and close dialog
+            result[0] = pwd_input.get() #get password from input field, store in result list
+            dialog.destroy() #close dialog after getting password
+
+        #allow pressing Enter to confirm password
+        pwd_input.bind('<Return>', lambda e: confirm())
+        ctk.CTkButton(dialog, text='[ AUTHENTICATE ]', font=FONT_MONO, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_MID, text_color=GREEN_BRIGHT, width=260, command=confirm).pack(pady=8)
+
+        #wait for dialog to close before returning result
+        dialog.wait_window()
+        return result[0]
 
     #function to send message to server
     def send_message(self):
