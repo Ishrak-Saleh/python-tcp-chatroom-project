@@ -5,25 +5,15 @@ import socket
 import threading
 from config import HOST, PORT, MAX_BUFFER, APP_NAME
 from database.db import init_db, is_banned
-from handler import handle
+from server.state import clients, nicknames, broadcast
 
 init_db() #creates the db on startup
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((HOST, PORT)) #server is bound to the localhost on point 1234567
-server.listen() #server is listening for incoming connections
-
-#list of clients and their nicknames
-clients = []
-nicknames = []
-
-#function to broadcast messages to all clients
-def broadcast(message):
-    for client in clients:
-        client.send(message) #sends the message to all clients
 
 #function to receive incoming client connections
 def receive():
+    from server.handler import handle #importing here to avoid circular imports
     while True: #basically accepting all the connections
         client, address = server.accept() #accepts the connection, gets the client and its address
         print(f'Connected with {str(address)}') #prints the address of the client
@@ -43,7 +33,7 @@ def receive():
                 client.send('INCORRECT_PASSWORD'.encode('ascii')) #sends incorrect password message to client
                 client.close() #closes client connection
                 continue #continue to receive next/more client connection
-        
+
         #add nickname and client to the respective lists
         nicknames.append(nickname)
         clients.append(client)
@@ -53,10 +43,15 @@ def receive():
         client.send(f'Welcome to {APP_NAME}, {nickname}!'.encode('ascii'))
         broadcast(f'{nickname} joined the chat!'.encode('ascii'))
 
-        
         thread = threading.Thread(target=handle, args=(client,)) #creates one thread for each client with a handle function for handling client connection
         thread.start() #starting thread
 
-#running the server
-print('Server is listening...')
-receive()
+#function to start the server
+def start():
+    server.bind((HOST, PORT)) #server is bound to the localhost on point 1234567
+    server.listen() #server is listening for incoming connections
+    print('Server is listening...')
+    receive()
+
+if __name__ == '__main__':
+    start()

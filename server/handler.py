@@ -5,9 +5,9 @@
 import sys
 sys.path.append('..') #for parent directory imports
 
-from server.server import clients, nicknames, broadcast
+from server.state import clients, nicknames, broadcast
 from config import MAX_BUFFER
-from commands import kick_user, ban_user
+from server.commands import kick_user, ban_user
 
 #function for handling individual client connections
 #runs in a separate thread for each client

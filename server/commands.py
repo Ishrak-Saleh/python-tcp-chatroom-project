@@ -1,4 +1,4 @@
-from server import clients, nicknames, broadcast
+from server.server import clients, nicknames, broadcast
 from database.db import add_ban
 
 #function to kick user from server

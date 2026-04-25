@@ -34,15 +34,15 @@ class ChatBuzzApp:
 
     def run(self):
         self.login_window.mainloop() #starts the login window, keeps running until closed
-    
+
     def login(self):
         self.nickname = self.nickname_input.get() #gets nickname from the input field
         if not self.nickname: #if nickname is empty, show error message
-            ctk.CTkLabel(self.login_window, text='Nickname cannot be empty!', text_color='red').pack() #error message label, packed below the button
+            ctk.CTkLabel(self.login_window, text='Nickname cannot be empty!', text_color='red').pack()
             return
         if self.nickname == 'admin': #if nickname is admin, ask for password
-            self.password = ctk.CTkInputDialog(text='Enter admin password:', title='Admin Login').get_input() #shows input dialog for password, gets input from user
-            if not self.password:  # cancelled or empty
+            self.password = ctk.CTkInputDialog(text='Enter admin password:', title='Admin Login').get_input()
+            if not self.password: #cancelled or empty
                 return
 
         self.setup_socket() #calls function to setup socket connection
@@ -50,28 +50,46 @@ class ChatBuzzApp:
     #function to receive messages from server, runs in a separate thread
     def receive(self):
         pass
-    
-    #function to setup socket connection, connect to server, send nickname and password if admin, start thread for receiving messages
+
+    #function to send message to server
+    def send_message(self):
+        pass
+
+    #function to setup socket connection, connect to server, start chat window
     def setup_socket(self):
         try:
             self.client.connect((HOST, PORT)) #connects to server using config host and port
+            self.login_window.destroy() #close login window after successful connection
 
-            #close login window, open chat window
-            self.login_window.destroy()
-            self.chat_window = ctk.CTk() #creates new window for chat
+            #create chat window
+            self.chat_window = ctk.CTk()
             self.chat_window.title(f'{APP_NAME} - {self.nickname}')
             self.chat_window.geometry('500x500')
 
-            thread = threading.Thread(target=self.receive) #create thread for receiving messages from server, run receive function in that thread
+            #chat display
+            self.chat_box = ctk.CTkTextbox(self.chat_window, state='disabled')
+            self.chat_box.pack(padx=10, pady=10, fill='both', expand=True)
+
+            #bottom bar
+            self.input_frame = ctk.CTkFrame(self.chat_window)
+            self.input_frame.pack(padx=10, pady=5, fill='x')
+
+            #message input field
+            self.message_input = ctk.CTkEntry(self.input_frame, placeholder_text='Type a message...')
+            self.message_input.pack(side='left', fill='x', expand=True, padx=5)
+
+            #send button
+            self.send_button = ctk.CTkButton(self.input_frame, text='Send', width=80, command=self.send_message)
+            self.send_button.pack(side='right', padx=5)
+
+            thread = threading.Thread(target=self.receive) #create thread for receiving messages
             thread.daemon = True #thread closes automatically when main program exits
             thread.start()
 
             self.chat_window.mainloop() #start chat window, keep running until closed
-        
-        except Exception as e:
-            ctk.CTkLabel(self.login_window, text=f'Connection failed!', text_color='red').pack() #error message if connection fails
 
-        
+        except Exception as e:
+            ctk.CTkLabel(self.login_window, text='Connection failed!', text_color='red').pack() #error message if connection fails
 
 if __name__ == '__main__': #starts application if run directly
     app = ChatBuzzApp()
