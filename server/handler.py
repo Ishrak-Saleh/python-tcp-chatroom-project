@@ -5,6 +5,7 @@
 import sys
 sys.path.append('..') #for parent directory imports
 
+from datetime import datetime
 from server.state import clients, nicknames, broadcast, broadcast_userlist
 from config import MAX_BUFFER
 from server.commands import kick_user, ban_user, unban_user
@@ -24,14 +25,14 @@ def handle(client):
                 if sender == 'admin':
                     name_to_kick = message[5:] #gets the nickname to kick from the message
                     kick_user(name_to_kick) #calls from commands.py to kick user
+                else: client.send('You do not have permission to execute this command!'.encode('ascii'))
 
-                else: client.send('You do not have permission to execute this command!'.encode('ascii')) #if not admin, send this message
             #if the message starts with ban, it's a ban command
             elif message.startswith('BAN'):
                 if sender == 'admin':
                     name_to_ban = message[4:] #gets the nickname to ban from the message
                     ban_user(name_to_ban) #calls from commands.py to ban user
-                else: client.send('You do not have permission to execute this command!'.encode('ascii')) #if not admin, send this message
+                else: client.send('You do not have permission to execute this command!'.encode('ascii'))
 
             #if the message starts with unban, it's an unban command
             elif message.startswith('UNBAN'):
@@ -39,18 +40,18 @@ def handle(client):
                     name_to_unban = message[6:] #gets the nickname to unban from the message
                     unban_user(name_to_unban) #calls unban function from commands.py
                 else:
-                    client.send('You do not have permission to execute this command!'.encode('ascii')) #if not admin, send this message
+                    client.send('You do not have permission to execute this command!'.encode('ascii'))
 
-            else: 
-                broadcast(message.encode('ascii')) #broadcasts message to all clients
+            else:
+                timestamp = datetime.now().strftime('%H:%M') #get current time in HH:MM format
+                broadcast(f'[{timestamp}] {message}'.encode('ascii')) #broadcast message with timestamp prefix
 
-
-        except: 
+        except:
             index = clients.index(client) #find index of client that got disconnected
             nickname = nicknames[index] #find corresponding nickname using index
-            clients.remove(client) 
-            client.close() 
-            broadcast(f'{nickname} left the chat!'.encode('ascii')) #broadcast that client has left to all clients
-            nicknames.remove(nickname) #remove nickname from nicknames list
-            broadcast_userlist() #update online list for all clients
+            clients.remove(client)
+            client.close()
+            broadcast(f'{nickname} left the chat!'.encode('ascii')) #broadcast that client has left
+            nicknames.remove(nickname)
+            broadcast_userlist() #update online list after user leaves
             break
