@@ -5,7 +5,7 @@
 import sys
 sys.path.append('..') #for parent directory imports
 
-from server.state import clients, nicknames, broadcast
+from server.state import clients, nicknames, broadcast, broadcast_userlist
 from config import MAX_BUFFER
 from server.commands import kick_user, ban_user, unban_user
 
@@ -46,10 +46,11 @@ def handle(client):
 
 
         except: 
-            index = clients.index(client)
-            nickname = nicknames[index]
-            clients.remove(client)
-            client.close()
-            broadcast(f'{nickname} left the chat!'.encode('ascii'))
-            nicknames.remove(nickname)
+            index = clients.index(client) #find index of client that got disconnected
+            nickname = nicknames[index] #find corresponding nickname using index
+            clients.remove(client) 
+            client.close() 
+            broadcast(f'{nickname} left the chat!'.encode('ascii')) #broadcast that client has left to all clients
+            nicknames.remove(nickname) #remove nickname from nicknames list
+            broadcast_userlist() #update online list for all clients
             break

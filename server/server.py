@@ -5,7 +5,7 @@ import socket
 import threading
 from config import HOST, PORT, MAX_BUFFER, APP_NAME
 from database.db import init_db, is_banned
-from server.state import clients, nicknames, broadcast
+from server.state import clients, nicknames, broadcast, broadcast_userlist
 
 init_db() #creates the db on startup
 
@@ -42,6 +42,7 @@ def receive():
         print(f'Nickname of the client is {nickname}')
         client.send(f'Welcome to {APP_NAME}, {nickname}!'.encode('ascii'))
         broadcast(f'{nickname} joined the chat!'.encode('ascii'))
+        broadcast_userlist() #update online list for all clients
 
         thread = threading.Thread(target=handle, args=(client,)) #creates one thread for each client with a handle function for handling client connection
         thread.start() #starting thread

@@ -12,10 +12,11 @@ BG_MID       = '#0a0f0a'
 BG_PANEL     = '#0d150d'
 GREEN_BRIGHT = '#33cc33'
 GREEN_DIM    = "#4cb94c"
-GREEN_MID    = '#2a7a2a'
-BORDER       = '#1a3a1a'
-FONT_MONO    = ('Courier', 13)
-FONT_MONO_SM = ('Courier', 12)
+GREEN_DARK   = '#2a7a2a'
+GREEN_DARKER  = '#1a3a1a'
+BORDER       = "#112711"
+FONT_MONO    = ('Courier', 14)
+FONT_MONO_SM = ('Courier', 13)
 FONT_MONO_LG = ('Courier', 15)
 
 #main theme for application
@@ -30,10 +31,9 @@ class ChatBuzzApp:
         self.stop_thread = False
 
         self.login_destroyed = False #flag to check if login window is destroyed, to prevent multiple error messages on failed connection attempts
-
         self.online_users = [] #to keep track of online users for displaying in sidebar
+        self.pending_online_list = None #stores online list received before chat window is ready
 
-        #creating login window using customtkinter
         #login window
         self.login_window = ctk.CTk()
         self.login_window.title(APP_NAME)
@@ -94,12 +94,12 @@ class ChatBuzzApp:
             fg_color=BG_PANEL,
             hover_color='#1a4a1a',
             border_width=1,
-            border_color=GREEN_MID,
+            border_color=GREEN_DARK,
             text_color=GREEN_BRIGHT,
             width=260,
             command=self.login
         ).pack(pady=8)
-    
+
     #function to start application
     def run(self):
         self.login_window.mainloop() #starts the login window, keeps running until closed
@@ -118,59 +118,74 @@ class ChatBuzzApp:
 
         self.setup_socket() #calls function to setup socket connection
 
+    def update_online_list(self, users):
+    #clear existing online labels and rebuild with updated user list
+        for widget in self.online_frame.winfo_children(): #destroy existing labels
+            widget.destroy()
+        for user in users: #add new label for each user
+            if user: #ignore empty strings
+                color = GREEN_BRIGHT if user == self.nickname else GREEN_DARK #highlight self
+                ctk.CTkLabel(self.online_frame, text=f'● {user}', font=FONT_MONO_SM, text_color=color).pack(pady=2, anchor='w')
+        self.online_header.configure(text=f'// ONLINE ({len([u for u in users if u])})') #update count
+
+
     #function to receive messages from server, runs in a separate thread
     def receive(self):
         while True:
             try:
-                message = self.client.recv(MAX_BUFFER).decode('ascii') #receives message from server, decodes it, if error occurs it means connection is lost
-                
-                if message == 'NICKNAME':
-                    self.client.send(self.nickname.encode('ascii')) #sends nickname to server when asked
-                    if self.password:
-                        next_msg = self.client.recv(MAX_BUFFER).decode('ascii') #receives next message from server, checks if it's asking for password
-                        if next_msg == 'PASSWORD':
-                            self.client.send(self.password.encode('ascii')) #sends password to server when asked
-                            auth_response = self.client.recv(MAX_BUFFER).decode('ascii') #receives authentication response from server
-                            if auth_response == 'INCORRECT_PASSWORD': #if incorrect password, show error and stop
-                                self.login_window.after(0, lambda: self.login_error.configure(
-                                    text='[REFUSED] incorrect admin password'
-                                ))
-                                return
+                raw = self.client.recv(MAX_BUFFER).decode('ascii') #receives raw data from server
+                messages = raw.split('\n') #split in case multiple messages arrived together due to tcp buffering
 
-                elif message == 'BAN': #if server sends ban message, show error on login window and stop
-                    self.client.close()
-                    self.login_window.after(0, lambda: self.login_error.configure(
-                        text='[REFUSED] you are banned from this server'
-                    ))
-                    return
+                for message in messages:
+                    message = message.strip() #remove whitespace and newlines
+                    if not message: continue #skip empty strings from split
 
-                else:
-                    if not self.login_destroyed: #only runs once on first successful connection
-                        self.login_destroyed = True
-                        self.login_window.after(0, self.login_window.destroy) #close login window after successful connection
-                        self.chat_window.after(0, self.chat_window.deiconify) #show chat window after successful connection
-                        self.chat_window.after(0, lambda: self.add_online_user(self.nickname)) #add self to online list on connect
+                    print(f'[DEBUG] received: {repr(message)}') #debug log, remove before submission
 
+                    if message == 'NICKNAME':
+                        self.client.send(self.nickname.encode('ascii')) #sends nickname to server when asked
+                        if self.password:
+                            next_msg = self.client.recv(MAX_BUFFER).decode('ascii') #receives next message from server
+                            if next_msg == 'PASSWORD':
+                                self.client.send(self.password.encode('ascii')) #sends password to server when asked
+                                auth_response = self.client.recv(MAX_BUFFER).decode('ascii') #receives authentication response
+                                if auth_response == 'INCORRECT_PASSWORD': #if incorrect password, show error and stop
+                                    self.login_window.after(0, lambda: self.login_error.configure(
+                                        text='[REFUSED] incorrect admin password'
+                                    ))
+                                    return
 
-                    if 'joined the chat!' in message: #parse join message to add user to sidebar
-                        username = message.split(' joined')[0] #extract username from join message
-                        self.chat_window.after(0, lambda u=username: self.add_online_user(u))
-                        self.chat_window.after(0, lambda msg=message: self.display_message(msg))
-                    elif 'left the chat!' in message or 'has been kicked' in message or 'has been banned' in message:
-                        username = message.split(' ')[0] #first word is always the username
-                        self.chat_window.after(0, lambda u=username: self.remove_online_user(u)) #remove user from sidebar
-                        self.chat_window.after(0, lambda msg=message: self.display_message(msg))
+                    elif message == 'BAN': #server sent ban message, show error on login window and stop
+                        self.client.close()
+                        self.login_window.after(0, lambda: self.login_error.configure(
+                            text='[REFUSED] you are banned from this server'
+                        ))
+                        return
+
+                    elif message.startswith('USERLIST:'): #server sent updated online list
+                        users = message[9:].split(',') #extract usernames from message
+                        if self.login_destroyed: #chat window is ready, update immediately
+                            self.chat_window.after(0, lambda u=users: self.update_online_list(u))
+                        else:
+                            self.pending_online_list = users #store for later if chat window not ready yet
+
                     else:
-                        self.chat_window.after(0, lambda msg=message: self.display_message(msg)) #display all other messages normally
+                        if not self.login_destroyed: #only runs once on first successful message
+                            self.login_destroyed = True
+                            self.login_window.after(0, self.login_window.destroy) #close login window
+                            self.chat_window.after(0, self.chat_window.deiconify) #show chat window
+                            if self.pending_online_list: #apply stored online list if it arrived before window was ready
+                                self.chat_window.after(100, lambda u=self.pending_online_list: self.update_online_list(u))
+
+                        self.chat_window.after(0, lambda msg=message: self.display_message(msg)) #display message in chat window
 
             except:
                 break #if connection is lost, exit receive loop, thread will end
-    
 
     #function to ask admin password using a dialog, returns the entered password
     def ask_password(self):
-        result = [None]  #empty list to store result from nested function, can be modified from inner scope
-        
+        result = [None] #empty list to store result from nested function, can be modified from inner scope
+
         #dialog window for admin password input
         dialog = ctk.CTkToplevel(self.login_window)
         dialog.title(f'{APP_NAME} // ADMIN AUTH')
@@ -182,7 +197,7 @@ class ChatBuzzApp:
         #admin auth dialog UI
         ctk.CTkLabel(dialog, text='> ADMIN AUTH // SECURE TERMINAL', font=FONT_MONO_LG, text_color=GREEN_BRIGHT).pack(pady=(24,4))
         ctk.CTkLabel(dialog, text='──────────────────────────────', font=FONT_MONO_SM, text_color=GREEN_DIM).pack()
-        ctk.CTkLabel(dialog, text='ENTER ADMIN KEY:', font=FONT_MONO_SM, text_color=GREEN_MID).pack(pady=(16,4))
+        ctk.CTkLabel(dialog, text='ENTER ADMIN KEY:', font=FONT_MONO_SM, text_color=GREEN_DARK).pack(pady=(16,4))
 
         #password input field, show='*' to hide input
         pwd_input = ctk.CTkEntry(dialog, font=FONT_MONO, fg_color=BG_PANEL, border_color=BORDER, text_color=GREEN_BRIGHT, width=260, show='*')
@@ -194,7 +209,7 @@ class ChatBuzzApp:
 
         #allow pressing Enter to confirm password
         pwd_input.bind('<Return>', lambda e: confirm())
-        ctk.CTkButton(dialog, text='[ AUTHENTICATE ]', font=FONT_MONO, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_MID, text_color=GREEN_BRIGHT, width=260, command=confirm).pack(pady=8)
+        ctk.CTkButton(dialog, text='[ AUTHENTICATE ]', font=FONT_MONO, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_DARK, text_color=GREEN_BRIGHT, width=260, command=confirm).pack(pady=8)
 
         #wait for dialog to close before returning result
         dialog.wait_window()
@@ -212,7 +227,6 @@ class ChatBuzzApp:
             self.client.send(f'BAN {message[5:]}'.encode('ascii'))
         elif message.startswith('/unban '): #translate unban command to server protocol
             self.client.send(f'UNBAN {message[7:]}'.encode('ascii'))
-        
         else:
             self.client.send(f'{self.nickname}: {message}'.encode('ascii')) #send normal message with nickname prefix
 
@@ -229,32 +243,18 @@ class ChatBuzzApp:
     def on_close(self):
         self.stop_thread = True
         self.client.close()
-        self.chat_window.destroy() 
+        self.chat_window.destroy()
         sys.exit() #force exit to ensure all threads are closed, daemon threads may not close properly on their own (fix)
 
-    #function to update online users list in sidebar
-    def update_online_list(self):
+    #function to refresh online users list in sidebar with full list from server
+    def refresh_online_list(self, users):
+        self.online_users = users #replace entire list with updated list from server
         for widget in self.online_frame.winfo_children(): #clear existing labels
             widget.destroy()
         for user in self.online_users: #add one label per user
-            color = GREEN_BRIGHT if user == self.nickname else GREEN_MID #highlight self
+            color = GREEN_BRIGHT if user == self.nickname else GREEN_DARK #highlight self in bright green
             ctk.CTkLabel(self.online_frame, text=f'● {user}', font=FONT_MONO_SM, text_color=color).pack(anchor='w', pady=1)
-        self.online_header.configure(text=f'// ONLINE ({len(self.online_users)})')
-
-    #function to add user to online list
-    def add_online_user(self, username):
-        if username not in self.online_users:
-            if username == self.nickname: #keep self at top
-                self.online_users.insert(0, username)
-            else:
-                self.online_users.append(username)
-            self.update_online_list()
-
-    #function to remove user from online list
-    def remove_online_user(self, username):
-        if username in self.online_users:
-            self.online_users.remove(username)
-            self.update_online_list()
+        self.online_header.configure(text=f'// ONLINE ({len(self.online_users)})') #update header count
 
     #function to setup socket connection, connect to server, start chat window
     def setup_socket(self):
@@ -274,15 +274,15 @@ class ChatBuzzApp:
             top_bar.pack(fill='x', side='top')
             top_bar.pack_propagate(False)
             ctk.CTkLabel(top_bar, text=f'{APP_NAME} // v1.0.0 // SECURE TERMINAL', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='left', padx=14, pady=8)
-            ctk.CTkLabel(top_bar, text=f'NODE: {self.nickname.upper()}', font=FONT_MONO_SM, text_color=GREEN_MID).pack(side='right', padx=14)
+            ctk.CTkLabel(top_bar, text=f'NODE: {self.nickname.upper()}', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='right', padx=14)
 
             #bottom bar — packed second so it stays at bottom
             bottom_bar = ctk.CTkFrame(self.chat_window, fg_color=BG_PANEL, corner_radius=0, height=44)
             bottom_bar.pack(fill='x', side='bottom')
             bottom_bar.pack_propagate(False)
             ctk.CTkLabel(bottom_bar, text=f'{self.nickname}@chatbuzz:~$', font=FONT_MONO_SM, text_color=GREEN_BRIGHT).pack(side='left', padx=(12,4), pady=10)
-            ctk.CTkButton(bottom_bar, text='SEND', font=FONT_MONO_SM, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_MID, text_color=GREEN_BRIGHT, width=70, command=self.send_message).pack(side='right', padx=10, pady=8)
-            ctk.CTkLabel(bottom_bar, text='/kick /ban /unban /dm', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='right', padx=4)
+            ctk.CTkButton(bottom_bar, text='SEND', font=FONT_MONO_SM, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_DARK, text_color=GREEN_BRIGHT, width=70, command=self.send_message).pack(side='right', padx=10, pady=8)
+            ctk.CTkLabel(bottom_bar, text='/kick /ban /unban', font=FONT_MONO_SM, text_color=GREEN_DARKER).pack(side='right', padx=4)
 
             #message input
             self.message_input = ctk.CTkEntry(bottom_bar, font=FONT_MONO_SM, fg_color=BG_PANEL, border_width=0, text_color=GREEN_BRIGHT, placeholder_text='type a message or /command...', placeholder_text_color=GREEN_DIM)
@@ -298,15 +298,10 @@ class ChatBuzzApp:
             self.sidebar.pack(side='left', fill='y')
             self.sidebar.pack_propagate(False) #prevents sidebar from shrinking
 
-            #sidebar channels section
-            ctk.CTkLabel(self.sidebar, text='// CHANNELS', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(pady=(12,4), padx=10, anchor='w')
-            ctk.CTkLabel(self.sidebar, text='# general', font=FONT_MONO_SM, text_color=GREEN_BRIGHT).pack(pady=2, padx=10, anchor='w')
-
             #sidebar online users section
-            ctk.CTkLabel(self.sidebar, text='──────────────', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(pady=4, padx=10)
             self.online_header = ctk.CTkLabel(self.sidebar, text='// ONLINE (0)', font=FONT_MONO_SM, text_color=GREEN_DIM) #header for online users list, updated dynamically with number of users
-            self.online_header.pack(pady=(4,4), padx=10, anchor='w')
-            
+            self.online_header.pack(pady=(12,4), padx=10, anchor='w')
+
             #online users list frame — individual labels added dynamically
             self.online_frame = ctk.CTkFrame(self.sidebar, fg_color='transparent') #transparent frame to hold online user labels
             self.online_frame.pack(fill='x', padx=10, anchor='w')

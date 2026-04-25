@@ -1,4 +1,4 @@
-from server.state import clients, nicknames, broadcast
+from server.state import clients, nicknames, broadcast, broadcast_userlist
 from database.db import add_ban, remove_ban
 
 #function to kick user from server
@@ -14,6 +14,7 @@ def kick_user(username):
         nicknames.remove(username) #removes username from nicknames list
         
         broadcast(f'{username} has been kicked from the chat!'.encode('ascii')) #broadcasts message to all clients
+        broadcast_userlist() #update online list for all clients
 
 
 #function to ban user from server
@@ -34,8 +35,10 @@ def ban_user(username):
         
         nicknames.remove(username) #removes username from nicknames list
         broadcast(f'{username} has been banned from the chat!'.encode('ascii')) #broadcasts message to all clients
+        broadcast_userlist() #update online list for all clients
 
 #function to unban user from server
 def unban_user(username):
     remove_ban(username) #calls db function to remove the ban from user in database
     broadcast(f'{username} has been unbanned from the chat!'.encode('ascii')) #broadcasts message to all clients
+    broadcast_userlist() #update online list for all clients
