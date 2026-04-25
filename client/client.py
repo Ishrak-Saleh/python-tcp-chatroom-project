@@ -31,6 +31,8 @@ class ChatBuzzApp:
 
         self.login_destroyed = False #flag to check if login window is destroyed, to prevent multiple error messages on failed connection attempts
 
+        self.online_users = [] #to keep track of online users for displaying in sidebar
+
         #creating login window using customtkinter
         #login window
         self.login_window = ctk.CTk()
@@ -121,6 +123,7 @@ class ChatBuzzApp:
         while True:
             try:
                 message = self.client.recv(MAX_BUFFER).decode('ascii') #receives message from server, decodes it, if error occurs it means connection is lost
+                
                 if message == 'NICKNAME':
                     self.client.send(self.nickname.encode('ascii')) #sends nickname to server when asked
                     if self.password:
@@ -128,13 +131,13 @@ class ChatBuzzApp:
                         if next_msg == 'PASSWORD':
                             self.client.send(self.password.encode('ascii')) #sends password to server when asked
                             auth_response = self.client.recv(MAX_BUFFER).decode('ascii') #receives authentication response from server
-                            if auth_response == 'INCORRECT_PASSWORD': #if incorrect password, close connection and show error message
+                            if auth_response == 'INCORRECT_PASSWORD': #if incorrect password, show error and stop
                                 self.login_window.after(0, lambda: self.login_error.configure(
                                     text='[REFUSED] incorrect admin password'
                                 ))
                                 return
-                            
-                elif message == 'BAN':
+
+                elif message == 'BAN': #if server sends ban message, show error on login window and stop
                     self.client.close()
                     self.login_window.after(0, lambda: self.login_error.configure(
                         text='[REFUSED] you are banned from this server'
@@ -142,13 +145,27 @@ class ChatBuzzApp:
                     return
 
                 else:
-                    if not self.login_destroyed: #only destroy login window once
+                    if not self.login_destroyed: #only runs once on first successful connection
                         self.login_destroyed = True
                         self.login_window.after(0, self.login_window.destroy) #close login window after successful connection
                         self.chat_window.after(0, self.chat_window.deiconify) #show chat window after successful connection
-                    self.chat_window.after(0, lambda msg=message: self.display_message(msg)) #displays message in chat window, replaces print
+                        self.chat_window.after(0, lambda: self.add_online_user(self.nickname)) #add self to online list on connect
+
+
+                    if 'joined the chat!' in message: #parse join message to add user to sidebar
+                        username = message.split(' joined')[0] #extract username from join message
+                        self.chat_window.after(0, lambda u=username: self.add_online_user(u))
+                        self.chat_window.after(0, lambda msg=message: self.display_message(msg))
+                    elif 'left the chat!' in message or 'has been kicked' in message or 'has been banned' in message:
+                        username = message.split(' ')[0] #first word is always the username
+                        self.chat_window.after(0, lambda u=username: self.remove_online_user(u)) #remove user from sidebar
+                        self.chat_window.after(0, lambda msg=message: self.display_message(msg))
+                    else:
+                        self.chat_window.after(0, lambda msg=message: self.display_message(msg)) #display all other messages normally
+
             except:
-                break
+                break #if connection is lost, exit receive loop, thread will end
+    
 
     #function to ask admin password using a dialog, returns the entered password
     def ask_password(self):
@@ -195,6 +212,7 @@ class ChatBuzzApp:
             self.client.send(f'BAN {message[5:]}'.encode('ascii'))
         elif message.startswith('/unban '): #translate unban command to server protocol
             self.client.send(f'UNBAN {message[7:]}'.encode('ascii'))
+        
         else:
             self.client.send(f'{self.nickname}: {message}'.encode('ascii')) #send normal message with nickname prefix
 
@@ -214,6 +232,29 @@ class ChatBuzzApp:
         self.chat_window.destroy() 
         sys.exit() #force exit to ensure all threads are closed, daemon threads may not close properly on their own (fix)
 
+    #function to update online users list in sidebar
+    def update_online_list(self):
+        for widget in self.online_frame.winfo_children(): #clear existing labels
+            widget.destroy()
+        for user in self.online_users: #add one label per user
+            color = GREEN_BRIGHT if user == self.nickname else GREEN_MID #highlight self
+            ctk.CTkLabel(self.online_frame, text=f'● {user}', font=FONT_MONO_SM, text_color=color).pack(anchor='w', pady=1)
+        self.online_header.configure(text=f'// ONLINE ({len(self.online_users)})')
+
+    #function to add user to online list
+    def add_online_user(self, username):
+        if username not in self.online_users:
+            if username == self.nickname: #keep self at top
+                self.online_users.insert(0, username)
+            else:
+                self.online_users.append(username)
+            self.update_online_list()
+
+    #function to remove user from online list
+    def remove_online_user(self, username):
+        if username in self.online_users:
+            self.online_users.remove(username)
+            self.update_online_list()
 
     #function to setup socket connection, connect to server, start chat window
     def setup_socket(self):
@@ -241,7 +282,7 @@ class ChatBuzzApp:
             bottom_bar.pack_propagate(False)
             ctk.CTkLabel(bottom_bar, text=f'{self.nickname}@chatbuzz:~$', font=FONT_MONO_SM, text_color=GREEN_BRIGHT).pack(side='left', padx=(12,4), pady=10)
             ctk.CTkButton(bottom_bar, text='SEND', font=FONT_MONO_SM, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_MID, text_color=GREEN_BRIGHT, width=70, command=self.send_message).pack(side='right', padx=10, pady=8)
-            ctk.CTkLabel(bottom_bar, text='/kick /ban /unban /who /dm', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='right', padx=4)
+            ctk.CTkLabel(bottom_bar, text='/kick /ban /unban /dm', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='right', padx=4)
 
             #message input
             self.message_input = ctk.CTkEntry(bottom_bar, font=FONT_MONO_SM, fg_color=BG_PANEL, border_width=0, text_color=GREEN_BRIGHT, placeholder_text='type a message or /command...', placeholder_text_color=GREEN_DIM)
@@ -263,9 +304,12 @@ class ChatBuzzApp:
 
             #sidebar online users section
             ctk.CTkLabel(self.sidebar, text='──────────────', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(pady=4, padx=10)
-            ctk.CTkLabel(self.sidebar, text='// ONLINE', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(pady=(4,4), padx=10, anchor='w')
-            self.online_label = ctk.CTkLabel(self.sidebar, text=f'● {self.nickname}', font=FONT_MONO_SM, text_color=GREEN_MID)
-            self.online_label.pack(pady=2, padx=10, anchor='w')
+            self.online_header = ctk.CTkLabel(self.sidebar, text='// ONLINE (0)', font=FONT_MONO_SM, text_color=GREEN_DIM) #header for online users list, updated dynamically with number of users
+            self.online_header.pack(pady=(4,4), padx=10, anchor='w')
+            
+            #online users list frame — individual labels added dynamically
+            self.online_frame = ctk.CTkFrame(self.sidebar, fg_color='transparent') #transparent frame to hold online user labels
+            self.online_frame.pack(fill='x', padx=10, anchor='w')
 
             #right chat area
             right_frame = ctk.CTkFrame(main_frame, fg_color=BG_DARK, corner_radius=0)

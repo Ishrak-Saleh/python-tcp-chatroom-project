@@ -40,7 +40,7 @@ def handle(client):
                     unban_user(name_to_unban) #calls unban function from commands.py
                 else:
                     client.send('You do not have permission to execute this command!'.encode('ascii')) #if not admin, send this message
-                    
+
             else: 
                 broadcast(message.encode('ascii')) #broadcasts message to all clients
 
