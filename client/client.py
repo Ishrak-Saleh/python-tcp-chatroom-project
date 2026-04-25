@@ -104,6 +104,7 @@ class ChatBuzzApp:
 
     #function to handle login logic, called when user clicks connect button or presses Enter in nickname field
     def login(self):
+        self.password = None #reset password on each login attempt
         self.nickname = self.nickname_input.get() #gets nickname from the input field
         if not self.nickname: #if nickname is empty, show error message
             self.login_error.configure(text='[ERROR] username cannot be empty')
@@ -145,7 +146,7 @@ class ChatBuzzApp:
                         self.login_destroyed = True
                         self.login_window.after(0, self.login_window.destroy) #close login window after successful connection
                         self.chat_window.after(0, self.chat_window.deiconify) #show chat window after successful connection
-                    self.display_message(message) #displays message in chat window, replaces print
+                    self.chat_window.after(0, lambda msg=message: self.display_message(msg)) #displays message in chat window, replaces print
             except:
                 break
 
