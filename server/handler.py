@@ -7,7 +7,7 @@ sys.path.append('..') #for parent directory imports
 
 from server.state import clients, nicknames, broadcast
 from config import MAX_BUFFER
-from server.commands import kick_user, ban_user
+from server.commands import kick_user, ban_user, unban_user
 
 #function for handling individual client connections
 #runs in a separate thread for each client
@@ -31,10 +31,20 @@ def handle(client):
                 if sender == 'admin':
                     name_to_ban = message[4:] #gets the nickname to ban from the message
                     ban_user(name_to_ban) #calls from commands.py to ban user
-
                 else: client.send('You do not have permission to execute this command!'.encode('ascii')) #if not admin, send this message
+
+            #if the message starts with unban, it's an unban command
+            elif message.startswith('UNBAN'):
+                if sender == 'admin':
+                    name_to_unban = message[6:] #gets the nickname to unban from the message
+                    unban_user(name_to_unban) #calls unban function from commands.py
+                else:
+                    client.send('You do not have permission to execute this command!'.encode('ascii')) #if not admin, send this message
+                    
             else: 
                 broadcast(message.encode('ascii')) #broadcasts message to all clients
+
+
         except: 
             index = clients.index(client)
             nickname = nicknames[index]

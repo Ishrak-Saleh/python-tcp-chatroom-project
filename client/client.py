@@ -49,11 +49,44 @@ class ChatBuzzApp:
 
     #function to receive messages from server, runs in a separate thread
     def receive(self):
-        pass
+        while True:
+            try:
+                message = self.client.recv(MAX_BUFFER).decode('ascii') #receives message from server, decodes it, if error occurs it means connection is lost
+                if message == 'NICKNAME':
+                    self.client.send(self.nickname.encode('ascii')) #sends nickname to server when asked
+                    if self.password:
+                        next_msg = self.client.recv(MAX_BUFFER).decode('ascii') #receives next message from server, checks if it's asking for password
+                        if next_msg == 'PASSWORD':
+                            self.client.send(self.password.encode('ascii')) #sends password to server if asked
+                else:
+                    self.display_message(message) #displays message in chat window, replaces print
+            except:
+                break
+
 
     #function to send message to server
     def send_message(self):
-        pass
+        message = self.message_input.get()
+
+        if not message: return #if message is empty, do nothing
+
+        if message.startswith('/kick '): #translate kick command to server protocol
+            self.client.send(f'KICK {message[6:]}'.encode('ascii'))
+        elif message.startswith('/ban '): #translate ban command to server protocol
+            self.client.send(f'BAN {message[5:]}'.encode('ascii'))
+        elif message.startswith('/unban '): #translate unban command to server protocol
+            self.client.send(f'UNBAN {message[7:]}'.encode('ascii'))
+        else:
+            self.client.send(f'{self.nickname}: {message}'.encode('ascii')) #send normal message with nickname prefix
+
+        self.message_input.delete(0, 'end') #clear input field after sending message
+
+
+    def display_message(self, message):
+        self.chat_box.configure(state='normal') #enable editing of chat box to insert new message
+        self.chat_box.insert('end', message + '\n') #insert message at the end of the chat box, add newline for separation
+        self.chat_box.configure(state='disabled') #disable editing of chat box to prevent user from changing messages
+        self.chat_box.see('end') #scroll to the end of chat box to show latest message
 
     #function to setup socket connection, connect to server, start chat window
     def setup_socket(self):
@@ -77,6 +110,8 @@ class ChatBuzzApp:
             #message input field
             self.message_input = ctk.CTkEntry(self.input_frame, placeholder_text='Type a message...')
             self.message_input.pack(side='left', fill='x', expand=True, padx=5)
+
+            self.message_input.bind('<Return>', lambda e: self.send_message()) #user can press Enter to send message
 
             #send button
             self.send_button = ctk.CTkButton(self.input_frame, text='Send', width=80, command=self.send_message)
