@@ -97,9 +97,12 @@ class ChatBuzzApp:
             width=260,
             command=self.login
         ).pack(pady=8)
+    
+    #function to start application
     def run(self):
         self.login_window.mainloop() #starts the login window, keeps running until closed
 
+    #function to handle login logic, called when user clicks connect button or presses Enter in nickname field
     def login(self):
         self.nickname = self.nickname_input.get() #gets nickname from the input field
         if not self.nickname: #if nickname is empty, show error message
