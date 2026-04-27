@@ -54,3 +54,22 @@ def log_message(sender, channel, message):
     cursor.execute('INSERT INTO messages (sender, channel, message) VALUES (?, ?, ?)', (sender, channel, message))
     conn.commit()
     conn.close()
+
+#function to get previous messages from a channel, limit set 20 by default
+def get_recent_messages(channel, limit = 20):
+    conn = sqlite3.connect('chatbuzz.db')
+    cursor = conn.cursor()
+
+    #select sender, message and timestamp columns from msgs table
+    #where channel column matches given channel, order results in descending order of timestamps
+    #limit the result number rows to given limit (20 now)
+    cursor.execute(''' 
+                    SELECT sender, message, timestamp FROM messages
+                    WHERE channel = ?
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                    ''', (channel, limit))
+    
+    rows = cursor.fetchall() #fetch all rows of the result
+    conn.close()
+    return list(reversed(rows)) #oldest message first

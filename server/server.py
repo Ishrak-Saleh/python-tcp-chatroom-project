@@ -4,7 +4,7 @@ sys.path.append('..') #for parent directory imports
 import socket
 import threading
 from config import HOST, PORT, MAX_BUFFER, APP_NAME
-from database.db import init_db, is_banned
+from database.db import init_db, is_banned, get_recent_messages
 from server.state import clients, nicknames, broadcast, broadcast_userlist
 
 init_db() #creates the db on startup
@@ -41,6 +41,15 @@ def receive():
         #print nickname on server-side, send welcome msg to client, broadcast that client has joined
         print(f'Nickname of the client is {nickname}')
         client.send(f'Welcome to {APP_NAME}, {nickname}!'.encode('ascii'))
+
+        history = get_recent_messages('general') #get recent messages from general channel using db function
+        if history: 
+            client.send('[SYS] --- message history ---\n'.encode('ascii'))
+            for sender, message, timestamp in history:
+                t = timestamp[11:16]  # extract HH:MM from sqlite datetime
+                client.send(f'[{t}] {sender}: {message}\n'.encode('ascii'))
+            client.send('[SYS] --- live session ---\n'.encode('ascii'))
+
         broadcast(f'{nickname} joined the chat!'.encode('ascii'))
         broadcast_userlist() #update online list for all clients
 

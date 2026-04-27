@@ -51,7 +51,7 @@ class ChatBuzzApp:
 
         ctk.CTkLabel(
             self.login_window,
-            text='──────────────────────────────',
+            text='--------------------------------',
             font=FONT_MONO_SM,
             text_color=GREEN_DIM
         ).pack()
@@ -212,7 +212,7 @@ class ChatBuzzApp:
 
         #admin auth dialog UI
         ctk.CTkLabel(dialog, text='> ADMIN AUTH // SECURE TERMINAL', font=FONT_MONO_LG, text_color=GREEN_BRIGHT).pack(pady=(24,4))
-        ctk.CTkLabel(dialog, text='──────────────────────────────', font=FONT_MONO_SM, text_color=GREEN_DIM).pack()
+        ctk.CTkLabel(dialog, text='--------------------------------', font=FONT_MONO_SM, text_color=GREEN_DIM).pack()
         ctk.CTkLabel(dialog, text='ENTER ADMIN KEY:', font=FONT_MONO_SM, text_color=GREEN_BRIGHT).pack(pady=(16,4))
 
         #password input field, show='*' to hide input
@@ -324,7 +324,7 @@ class ChatBuzzApp:
             self.chat_box.pack(padx=10, pady=10, fill='both', expand=True)
             self.chat_box.configure(state='disabled')
 
-            self.display_message('[SYS] ──── session established ────') #boot message on connect
+            self.display_message('[SYS] --- session established ---') #boot message on connect
 
             thread = threading.Thread(target=self.receive) #create thread for receiving messages
             thread.daemon = True #thread closes automatically when main program exits

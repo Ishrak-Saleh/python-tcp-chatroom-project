@@ -9,6 +9,7 @@ from datetime import datetime
 from server.state import clients, nicknames, broadcast, broadcast_userlist
 from config import MAX_BUFFER
 from server.commands import kick_user, ban_user, unban_user
+from database.db import log_message
 
 #function for handling individual client connections
 #runs in a separate thread for each client
@@ -45,6 +46,9 @@ def handle(client):
             else:
                 timestamp = datetime.now().strftime('%H:%M') #get current time in HH:MM format
                 broadcast(f'[{timestamp}] {message}'.encode('ascii')) #broadcast message with timestamp prefix
+
+                #log message to database, extract actual message by splitting, if format is [HH:MM] sender: message, else log whole message
+                log_message(sender, 'general', message.split(': ', 1)[1] if ': ' in message else message) 
 
         except:
             index = clients.index(client) #find index of client that got disconnected
