@@ -213,7 +213,7 @@ class ChatBuzzApp:
         #admin auth dialog UI
         ctk.CTkLabel(dialog, text='> ADMIN AUTH // SECURE TERMINAL', font=FONT_MONO_LG, text_color=GREEN_BRIGHT).pack(pady=(24,4))
         ctk.CTkLabel(dialog, text='──────────────────────────────', font=FONT_MONO_SM, text_color=GREEN_DIM).pack()
-        ctk.CTkLabel(dialog, text='ENTER ADMIN KEY:', font=FONT_MONO_SM, text_color=GREEN_DARK).pack(pady=(16,4))
+        ctk.CTkLabel(dialog, text='ENTER ADMIN KEY:', font=FONT_MONO_SM, text_color=GREEN_BRIGHT).pack(pady=(16,4))
 
         #password input field, show='*' to hide input
         pwd_input = ctk.CTkEntry(dialog, font=FONT_MONO, fg_color=BG_PANEL, border_color=BORDER, text_color=GREEN_BRIGHT, width=260, show='*')
@@ -271,7 +271,7 @@ class ChatBuzzApp:
 
             #chat window
             self.chat_window = ctk.CTk()
-            self.chat_window.title(f'{APP_NAME} // {self.nickname.upper()}')
+            self.chat_window.title(f'{APP_NAME} // {self.nickname}')
             self.chat_window.geometry('900x600')
             self.chat_window.configure(fg_color=BG_DARK)
             self.chat_window.withdraw() #hide until login confirmed
@@ -281,7 +281,7 @@ class ChatBuzzApp:
             top_bar.pack(fill='x', side='top')
             top_bar.pack_propagate(False)
             ctk.CTkLabel(top_bar, text=f'{APP_NAME} // v1.0.0 // SECURE TERMINAL', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='left', padx=14, pady=8)
-            ctk.CTkLabel(top_bar, text=f'NODE: {self.nickname.upper()}', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='right', padx=14)
+            ctk.CTkLabel(top_bar, text=f'NODE: {self.nickname}', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='right', padx=14)
 
             #bottom bar — packed second so it stays at bottom
             bottom_bar = ctk.CTkFrame(self.chat_window, fg_color=BG_PANEL, corner_radius=0, height=44)
