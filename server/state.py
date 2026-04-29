@@ -1,3 +1,5 @@
+#This file contains state of the server
+#This will be used for keeping track of clients, their nicknames and broadcasting messages to all clients
 #list of clients and their nicknames
 clients = []
 nicknames = []

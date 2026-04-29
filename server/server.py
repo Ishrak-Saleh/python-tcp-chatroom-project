@@ -1,4 +1,5 @@
 import sys
+import random
 sys.path.append('..') #for parent directory imports
 
 import socket
@@ -11,6 +12,13 @@ init_db() #creates the db on startup
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+#function to assign unique nickname if nickname already exists
+def assign_nickname(requested_name):
+    while True:
+        candidate = f"{requested_name}_{random.randint(1000, 9999)}" #append random 4 digit number
+        if candidate not in nicknames: #check if candidate nickname is unique
+            return candidate
+
 #function to receive incoming client connections
 def receive():
     from server.handler import handle #importing here to avoid circular imports
@@ -20,25 +28,35 @@ def receive():
         client.send('NICKNAME'.encode('ascii')) #asks the client for a nickname using keyword
         nickname = client.recv(MAX_BUFFER).decode('ascii') #receives the nickname from the client and decodes it
 
-        if is_banned(nickname): #checks if nickname is banned using db function
-            client.send('BAN'.encode('ascii')) #if banned, send BAN keyword to client
-            client.close() #close the client connection
-            continue #skip rest of the loop, wait for next connection
+        if is_banned(nickname): #check if the nickname is banned using db function
+            client.send('BAN'.encode('ascii')) #send BAN keyword to client if banned
+            #close client connection and skip rest of loop, wait for next connection
+            client.close()
+            continue
 
         if nickname == 'admin':
-            client.send('PASSWORD'.encode('ascii')) #asks admin client for password using keyword
-            password = client.recv(MAX_BUFFER).decode('ascii') #receives password from admin, decodes it
+            if 'admin' in nicknames: #block second admin session
+                client.send('ADMIN_ALREADY_CONNECTED'.encode('ascii'))
+                client.close()
+                continue
 
-            if password != 'admin@123': #if password is incorrect
-                client.send('INCORRECT_PASSWORD'.encode('ascii')) #sends incorrect password message to client
-                client.close() #closes client connection
-                continue #continue to receive next/more client connection
+            client.send('PASSWORD'.encode('ascii')) #ask admin client for password using keyword
+            password = client.recv(MAX_BUFFER).decode('ascii') #recieve password from admin and decodes it
 
-        #add nickname and client to the respective lists
+            if password != 'admin@123': #if incorrect admin password (hardcoded for now)
+                client.send('INCORRECT_PASSWORD'.encode('ascii')) #send incorrect password message to client
+                client.close()
+                continue
+
+        if nickname != 'admin':
+            nickname = assign_nickname(nickname) #assign unique nickname number
+        client.send(f'ASSIGNED_NICKNAME:{nickname}'.encode('ascii')) #tell client their assigned nickname
+
+        #add client and nickname to list
         nicknames.append(nickname)
         clients.append(client)
 
-        #print nickname on server-side, send welcome msg to client, broadcast that client has joined
+        #print nickname of client connected to server (debugging)
         print(f'Nickname of the client is {nickname}')
         client.send(f'Welcome to {APP_NAME}, {nickname}!'.encode('ascii'))
 
