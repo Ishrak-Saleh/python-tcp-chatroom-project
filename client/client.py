@@ -188,11 +188,13 @@ class ChatBuzzApp:
                             self.pending_online_list = users #store for later if chat window not ready yet
 
                     elif message == 'You have been kicked from the server!': #server sent kick message, disable chat and stop
-                        self.chat_window.after(0, lambda: self.disable_chat('KICKED'))
+                        self.chat_window.after(0, lambda: self.display_kicked_msg('KICKED')) #show kick message on screen
+                        self.chat_window.after(0, lambda: self.disable_chat('KICKED')) #turn of chat for kicked user
                         return  #stop receive loop, connection is closed by server
 
                     elif message == 'You have been banned from the server!': #server sent ban message, disable chat and stop
-                        self.chat_window.after(0, lambda: self.disable_chat('BANNED'))
+                        self.chat_window.after(0, lambda: self.display_kicked_msg('BANNED')) #show ban message on screen
+                        self.chat_window.after(0, lambda: self.disable_chat('BANNED')) #turn off chat for banned user
                         return
 
                     else:
@@ -203,7 +205,10 @@ class ChatBuzzApp:
                             if self.pending_online_list: #apply stored online list if it arrived before window was ready
                                 self.chat_window.after(100, lambda u=self.pending_online_list: self.update_online_list(u))
 
-                        self.chat_window.after(0, lambda msg=message: self.display_message(msg)) #display message in chat window
+                        #showing nickname with suffix in the server
+                        joined_suffix = f'{self.nickname} joined the chat!'
+                        if not message.endswith(joined_suffix):
+                            self.chat_window.after(0, lambda msg=message: self.display_message(msg))
 
             except:
                 break #if connection is lost, exit receive loop, thread will end
@@ -261,9 +266,23 @@ class ChatBuzzApp:
     #function to display message in chat box, runs in main thread using after() to avoid tkinter threading issues
     def display_message(self, message):
         self.chat_box.configure(state='normal') #enable editing of chat box to insert new message
-        self.chat_box.insert('end', message + '\n') #insert message at the end of the chat box, add newline for separation
+        #check if message is a system notification or join/leave event
+        is_sys = message.startswith('[SYS]') or 'joined the chat!' in message or 'left the chat!' in message
+        tag = 'sys' if is_sys else 'normal' # #assign tag name based on message type
+        #set text color for system messages
+        self.chat_box.tag_config('sys', foreground=GREEN_DARK)
+        self.chat_box.tag_config('normal', foreground=GREEN_BRIGHT)
+        self.chat_box.insert('end', message + '\n', tag) #insert message at the end of the chat box, add newline for separation
         self.chat_box.configure(state='disabled') #disable editing of chat box to prevent user from changing messages
         self.chat_box.see('end') #scroll to the end of chat box to show latest message
+
+    #function to show a red colored system message when user is kicked/banned
+    def display_kicked_msg(self, reason):
+        self.chat_box.configure(state='normal') #enable editing of chat box to insert new message
+        self.chat_box.tag_config('kicked', foreground='#cc3333') #set text color to red for kick/ban message
+        self.chat_box.insert('end', f'[SYS] You have been {reason.lower()} from the server.\n', 'kicked') #insert kick or ban alert at the end
+        self.chat_box.configure(state='disabled') #disable chat box editing, prevent user from changing message
+        self.chat_box.see('end') #scroll to end, show latest message
 
     #function to handle closing of chat window, makes sure socket connection is closed and thread is stopped
     def on_close(self):
@@ -291,7 +310,7 @@ class ChatBuzzApp:
             top_bar.pack(fill='x', side='top')
             top_bar.pack_propagate(False)
             ctk.CTkLabel(top_bar, text=f'{APP_NAME} // v1.0.0 // SECURE TERMINAL', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='left', padx=14, pady=8)
-            ctk.CTkLabel(top_bar, text=f'NODE: {self.nickname}', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='right', padx=14)
+            ctk.CTkLabel(top_bar, text=f'Node: {self.nickname}', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(side='right', padx=14)
 
             #bottom bar — packed second so it stays at bottom
             bottom_bar = ctk.CTkFrame(self.chat_window, fg_color=BG_PANEL, corner_radius=0, height=44)
@@ -301,10 +320,10 @@ class ChatBuzzApp:
             
             self.send_button = ctk.CTkButton(bottom_bar, text='SEND', font=FONT_MONO_SM, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_DARK, text_color=GREEN_BRIGHT, width=70, command=self.send_message)
             self.send_button.pack(side='right', padx=10, pady=8)
-            ctk.CTkLabel(bottom_bar, text='/kick /ban /unban', font=FONT_MONO_SM, text_color=GREEN_DARKER).pack(side='right', padx=4)
+            ctk.CTkLabel(bottom_bar, text='/kick /ban /unban', font=FONT_MONO_SM, text_color=GREEN_DARK).pack(side='right', padx=4)
 
             #message input
-            self.message_input = ctk.CTkEntry(bottom_bar, font=FONT_MONO_SM, fg_color=BG_PANEL, border_width=0, text_color=GREEN_BRIGHT, placeholder_text='type a message or /command...', placeholder_text_color=GREEN_DIM)
+            self.message_input = ctk.CTkEntry(bottom_bar, font=FONT_MONO_LG, fg_color=BG_PANEL, border_width=0, text_color=GREEN_BRIGHT, placeholder_text='type a message or /command...', placeholder_text_color=GREEN_DARK)
             self.message_input.pack(side='left', fill='x', expand=True, pady=8)
             self.message_input.bind('<Return>', lambda e: self.send_message()) #enter key to send
 
