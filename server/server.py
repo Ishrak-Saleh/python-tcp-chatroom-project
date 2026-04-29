@@ -58,7 +58,7 @@ def receive():
 
         #print nickname of client connected to server (debugging)
         print(f'Nickname of the client is {nickname}')
-        client.send(f'Welcome to {APP_NAME}, {nickname}!'.encode('ascii'))
+        client.send(f'Welcome to {APP_NAME}, {nickname}!\n'.encode('ascii'))
 
         history = get_recent_messages('general') #get recent messages from general channel using db function
         if history: 

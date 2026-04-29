@@ -15,9 +15,9 @@ GREEN_DIM    = "#4cb94c"
 GREEN_DARK   = '#2a7a2a'
 GREEN_DARKER = '#1a3a1a'
 BORDER       = "#112711"
-FONT_MONO    = ('Courier', 14)
-FONT_MONO_SM = ('Courier', 13)
-FONT_MONO_LG = ('Courier', 15)
+FONT_MONO    = ('Courier', 16)
+FONT_MONO_SM = ('Courier', 15)
+FONT_MONO_LG = ('Courier', 17)
 
 #main theme for application
 ctk.set_appearance_mode('dark')
@@ -37,7 +37,7 @@ class ChatBuzzApp:
         #login window
         self.login_window = ctk.CTk()
         self.login_window.title(APP_NAME)
-        self.login_window.geometry('500x320')
+        self.login_window.geometry('600x420')
         self.login_window.configure(fg_color=BG_DARK)
         self.login_window.resizable(False, False)
 
@@ -131,16 +131,19 @@ class ChatBuzzApp:
     #function to disable chat input when user is kicked or banned
     def disable_chat(self, reason):
         self.message_input.configure(
-            state='disabled', #disable input field
-            placeholder_text=f'[ {reason} ]', #show reason in placeholder
-            fg_color='#050a05' #darker background to signal disabled state
+            state='normal', #temporarily enable to insert text
+            fg_color=BG_PANEL, #keep original background, no black
+            text_color='#cc3333' #red text color for the inserted message
         )
+        self.message_input.delete(0, 'end') #clear any existing text
+        self.message_input.insert(0, f'[ YOU WERE {reason} — CONNECTION CLOSED ]') #insert as real text, always visible
+        self.message_input.configure(state='disabled') #now disable so user can't edit it
         self.send_button.configure(
-            state='disabled', #disable send button
-            fg_color='#050a05', #darker background
-            text_color='#1a3a1a' #dim text to signal disabled state
+            state='disabled',
+            fg_color=BG_PANEL,
+            text_color='#3a0a0a',
+            border_color='#2a0a0a'
         )
-
     #function to receive messages from server, runs in a separate thread
     def receive(self):
         while True:
@@ -167,10 +170,15 @@ class ChatBuzzApp:
 
                     elif message == 'BAN': #server sent ban message, show error on login window and stop
                         self.client.close()
+                        #show ban message on login window
                         self.login_window.after(0, lambda: self.login_error.configure(
                             text='[REFUSED] you are banned from this server'
                         ))
                         return
+
+                    elif message.startswith('ASSIGNED_NICKNAME:'): #server sent assigned nickname, update self.nickname and window title
+                        self.nickname = message[18:]  #update nickname to server-assigned one
+                        self.chat_window.after(0, lambda: self.chat_window.title(f'{APP_NAME} // {self.nickname}'))
 
                     elif message.startswith('USERLIST:'): #server sent updated online list
                         users = message[9:].split(',') #extract usernames from message
@@ -179,6 +187,14 @@ class ChatBuzzApp:
                         else:
                             self.pending_online_list = users #store for later if chat window not ready yet
 
+                    elif message == 'You have been kicked from the server!': #server sent kick message, disable chat and stop
+                        self.chat_window.after(0, lambda: self.disable_chat('KICKED'))
+                        return  #stop receive loop, connection is closed by server
+
+                    elif message == 'You have been banned from the server!': #server sent ban message, disable chat and stop
+                        self.chat_window.after(0, lambda: self.disable_chat('BANNED'))
+                        return
+
                     else:
                         if not self.login_destroyed: #only runs once on first successful message
                             self.login_destroyed = True
@@ -186,12 +202,6 @@ class ChatBuzzApp:
                             self.chat_window.after(0, self.chat_window.deiconify) #show chat window
                             if self.pending_online_list: #apply stored online list if it arrived before window was ready
                                 self.chat_window.after(100, lambda u=self.pending_online_list: self.update_online_list(u))
-
-                        if 'has been kicked' in message or 'has been banned' in message:
-                            username = message.split(' ')[0] #first word is always the username
-                            if username == self.nickname: #if it's this client who was kicked/banned
-                                reason = 'you were kicked' if 'kicked' in message else 'you were banned'
-                                self.chat_window.after(0, lambda r=reason: self.disable_chat(r))
 
                         self.chat_window.after(0, lambda msg=message: self.display_message(msg)) #display message in chat window
 
@@ -272,7 +282,7 @@ class ChatBuzzApp:
             #chat window
             self.chat_window = ctk.CTk()
             self.chat_window.title(f'{APP_NAME} // {self.nickname}')
-            self.chat_window.geometry('900x600')
+            self.chat_window.geometry('1000x700')
             self.chat_window.configure(fg_color=BG_DARK)
             self.chat_window.withdraw() #hide until login confirmed
 
