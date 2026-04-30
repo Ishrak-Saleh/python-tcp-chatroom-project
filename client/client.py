@@ -252,7 +252,13 @@ class ChatBuzzApp:
 
         if not message: return #if message is empty, do nothing
 
-        if message.startswith('/kick '): #translate kick command to server protocol
+        if message.startswith('/dm '): #translate dm command to server protocol
+            parts = message[4:].split(' ', 1) #split into target and message body
+            if len(parts) == 2:
+                self.client.send(f'DM {parts[0]} {parts[1]}'.encode('ascii'))
+            self.message_input.delete(0, 'end')
+            return
+        elif message.startswith('/kick '): #translate kick command to server protocol
             self.client.send(f'KICK {message[6:]}'.encode('ascii'))
         elif message.startswith('/ban '): #translate ban command to server protocol
             self.client.send(f'BAN {message[5:]}'.encode('ascii'))
@@ -269,9 +275,11 @@ class ChatBuzzApp:
     def display_message(self, message):
         self.chat_box.configure(state='normal') #enable editing of chat box to insert new message
         #check if message is a system notification or join/leave event
+        is_dm = message.startswith('[DM')
         is_banlist = message.startswith('[SYS] Banned') or message.startswith('[SYS] No banned')
         is_sys = (message.startswith('[SYS]') or 'joined the chat!' in message or 'left the chat!' in message) and not is_banlist
-        tag = 'banlist' if is_banlist else ('sys' if is_sys else 'normal')
+        tag = 'banlist' if is_banlist else ('dm' if is_dm else ('sys' if is_sys else 'normal'))
+        self.chat_box.tag_config('dm', foreground='#4da6ff') #blue for dm messages
         self.chat_box.tag_config('sys', foreground=GREEN_DARK)
         self.chat_box.tag_config('normal', foreground=GREEN_BRIGHT)
         self.chat_box.tag_config('banlist', foreground=GREEN_BRIGHT)

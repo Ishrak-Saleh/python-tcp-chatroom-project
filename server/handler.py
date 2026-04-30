@@ -20,7 +20,7 @@ def handle(client):
             message = client.recv(MAX_BUFFER).decode('ascii')
             #cleaner representation of message sender
             sender = nicknames[clients.index(client)]
-
+        
             #if the message starts with kick, it's a kick command
             if message.startswith('KICK'):
                 if sender == 'admin':
@@ -56,6 +56,18 @@ def handle(client):
                     name_to_ban = message[4:] #gets the nickname to ban from the message
                     ban_user(name_to_ban) #calls from commands.py to ban user
                 else: client.send('You do not have permission to execute this command!'.encode('ascii'))
+            
+            #if the message starts with dm, it's a dm command
+            elif message.startswith('DM '): #handle direct message command
+                parts = message[3:].split(' ', 1) #split into target nickname and message body
+                if len(parts) == 2:
+                    target, dm_msg = parts
+                    if target in nicknames: #check if target user is online
+                        target_client = clients[nicknames.index(target)] #find target client socket
+                        target_client.send(f'[DM from {sender}] {dm_msg}\n'.encode('ascii')) #send to receiver
+                        client.send(f'[DM to {target}] {dm_msg}\n'.encode('ascii')) #confirm to sender
+                    else:
+                        client.send(f'[SYS] User "{target}" not found.\n'.encode('ascii')) #user offline or wrong name
 
             else:
                 timestamp = datetime.now().strftime('%H:%M') #get current time in HH:MM format
