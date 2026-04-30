@@ -23,6 +23,7 @@ FONT_MONO_LG = ('Courier', 17)
 ctk.set_appearance_mode('dark')
 ctk.set_default_color_theme('green')
 
+#main app window
 class ChatBuzzApp:
     def __init__(self):
         self.nickname = None
@@ -33,6 +34,7 @@ class ChatBuzzApp:
         self.login_destroyed = False #flag to check if login window is destroyed, to prevent multiple error messages on failed connection attempts
         self.online_users = [] #to keep track of online users for displaying in sidebar
         self.pending_online_list = None #stores online list received before chat window is ready
+        self.group_windows = {} #track open group windows by group_id
 
         #login window
         self.login_window = ctk.CTk()
@@ -203,6 +205,36 @@ class ChatBuzzApp:
                         self.chat_window.after(0, lambda: self.disable_chat('BANNED')) #turn off chat for banned user
                         return
 
+                    elif message.startswith('GROUP_INVITE_REQ '):
+                        #received invite to a group, show prompt
+                        parts = message[17:].split(' ', 1)
+                        if len(parts) == 2:
+                            group_id, inviter = parts
+                            self.chat_window.after(0, lambda g=group_id, i=inviter: self.show_invite_prompt(g, i))
+
+                    elif message.startswith('GROUP_CREATED '):
+                        #group was created, open group window as creator
+                        group_id = message[14:].strip()
+                        self.chat_window.after(0, lambda g=group_id: self.open_group_window(g))
+
+                    elif message.startswith('GROUP_JOINED '):
+                        #accepted invite, server confirmed, open group window
+                        parts = message[13:].split(' ', 1)
+                        if len(parts) == 2:
+                            group_id, members = parts[0], parts[1].split(',')
+                            self.chat_window.after(0, lambda g=group_id, m=members: self.open_group_window(g, m))
+
+                    elif message.startswith('GROUP_MSG '):
+                        #relay message to correct group window
+                        parts = message[10:].split(' ', 1)
+                        if len(parts) == 2:
+                            group_id, content = parts
+                            if group_id in self.group_windows:
+                                self.chat_window.after(0, lambda c=content, g=group_id: self.group_windows[g].display(c))
+
+                    elif message.startswith('GROUP_USER_LEFT ') or message.startswith('GROUP_DISSOLVED '):
+                        pass #handled via GROUP_MSG [SYS] messages already
+
                     else:
                         if not self.login_destroyed: #only runs once on first successful message
                             self.login_destroyed = True
@@ -258,6 +290,7 @@ class ChatBuzzApp:
         lines = [
             '[SYS] -------- HELP --------',
             '[SYS] /dm <user> <msg>   -- send a private message',
+            '[SYS] /group <u1,u2,...>     -- start a group chat',
             '[SYS] /help              -- show this menu',
             #only show this part to admin
             '[SYS] ------- ADMIN -------' if is_admin else None,
@@ -293,6 +326,12 @@ class ChatBuzzApp:
             self.client.send(f'UNBAN {message[7:]}'.encode('ascii'))
         elif message.startswith('/banlist'): #translate banlist command to server protocol
             self.client.send('BANLIST'.encode('ascii'))
+        elif message.startswith('/group '):
+            #send group invite to server
+            targets = message[7:].strip()
+            self.client.send(f'GROUP_INVITE {targets}'.encode('ascii'))
+            self.message_input.delete(0, 'end')
+            return
         elif message.startswith('/help'): #show help menu locally, no server needed
             self.show_help()
         else:
@@ -315,6 +354,54 @@ class ChatBuzzApp:
         self.chat_box.insert('end', message + '\n', tag) #insert message at the end of the chat box, add newline for separation
         self.chat_box.configure(state='disabled') #disable editing of chat box to prevent user from changing messages
         self.chat_box.see('end') #scroll to the end of chat box to show latest message
+    
+    #function to show group invite prompt when another user invites this client
+    def show_invite_prompt(self, group_id, inviter):
+        #prompt window
+        prompt = ctk.CTkToplevel(self.chat_window)
+        prompt.title(f'{APP_NAME} // GROUP INVITE')
+        prompt.geometry('420x220')
+        prompt.configure(fg_color=BG_DARK)
+        prompt.resizable(False, False)
+        prompt.grab_set()
+
+        ctk.CTkLabel(prompt, text='> GROUP INVITE', font=FONT_MONO_LG, text_color=GREEN_BRIGHT).pack(pady=(24,4))
+        ctk.CTkLabel(prompt, text='--------------------------------', font=FONT_MONO_SM, text_color=GREEN_DIM).pack()
+        ctk.CTkLabel(prompt, text=f'{inviter} invited you to a group chat.', font=FONT_MONO_SM, text_color=GREEN_BRIGHT).pack(pady=(12,4))
+        ctk.CTkLabel(prompt, text=f'GROUP ID: {group_id}', font=FONT_MONO_SM, text_color=GREEN_DIM).pack(pady=(0,12))
+
+        btn_frame = ctk.CTkFrame(prompt, fg_color='transparent')
+        btn_frame.pack()
+
+        def accept():
+            self.client.send(f'GROUP_ACCEPT {group_id}'.encode('ascii'))
+            prompt.destroy()
+
+        def decline():
+            self.client.send(f'GROUP_DECLINE {group_id}'.encode('ascii'))
+            prompt.destroy()
+
+        #yes / no buttons
+        ctk.CTkButton(btn_frame, text='[ YES ]', font=FONT_MONO, fg_color=BG_PANEL, hover_color='#1a4a1a',
+                      border_width=1, border_color=GREEN_DARK, text_color=GREEN_BRIGHT, width=120, command=accept).pack(side='left', padx=8)
+        ctk.CTkButton(btn_frame, text='[ NO ]', font=FONT_MONO, fg_color=BG_PANEL, hover_color='#3a1a1a',
+                      border_width=1, border_color='#4a2020', text_color='#ff6666', width=120, command=decline).pack(side='left', padx=8)
+
+        #enter key = accept
+        prompt.bind('<Return>', lambda e: accept())
+
+
+    #function to open a group chat window for a given group_id
+    def open_group_window(self, group_id, members=None):
+        if group_id in self.group_windows: return #already open
+
+        win = GroupChatWindow(self.chat_window, group_id, self.nickname, self.client, self.group_windows)
+        self.group_windows[group_id] = win
+
+        if members:
+            win.display(f'[SYS] Members: {", ".join(members)}')
+        win.display(f'[SYS] Group {group_id} started. Close window to leave.')
+
 
     #function to show a red colored system message when user is kicked/banned
     def display_kicked_msg(self, reason):
@@ -404,6 +491,77 @@ class ChatBuzzApp:
 
         except Exception as e:
             self.login_error.configure(text='[ERR] connection failed — is server running?') #error message if connection fails
+
+
+#standalone group chat window, one instance per active group
+class GroupChatWindow:
+    def __init__(self, parent, group_id, nickname, client_sock, registry):
+        self.group_id = group_id
+        self.nickname = nickname
+        self.client_sock = client_sock
+        self.registry = registry #shared dict of group_windows
+
+        #group window
+        self.win = ctk.CTkToplevel(parent)
+        self.win.title(f'{APP_NAME} // GROUP {group_id}')
+        self.win.geometry('600x500')
+        self.win.configure(fg_color=BG_DARK)
+        self.win.resizable(False, False)
+
+        #header
+        ctk.CTkLabel(self.win, text=f'> GROUP CHAT // {group_id}', font=FONT_MONO_LG, text_color=GREEN_BRIGHT).pack(pady=(16,0))
+        ctk.CTkLabel(self.win, text='----------------------------------------', font=FONT_MONO_SM, text_color=GREEN_DIM).pack()
+
+        #chat display box
+        self.chat_box = ctk.CTkTextbox(self.win, font=FONT_MONO_SM, fg_color=BG_PANEL,
+                                        text_color=GREEN_BRIGHT, border_color=BORDER,
+                                        border_width=1, wrap='word', state='disabled')
+        self.chat_box.pack(fill='both', expand=True, padx=16, pady=(8,0))
+
+        #input row
+        input_frame = ctk.CTkFrame(self.win, fg_color='transparent')
+        input_frame.pack(fill='x', padx=16, pady=12)
+
+        self.msg_input = ctk.CTkEntry(input_frame, font=FONT_MONO, fg_color=BG_PANEL,
+                                       border_color=BORDER, text_color=GREEN_BRIGHT,
+                                       placeholder_text='type message...')
+        self.msg_input.pack(side='left', fill='x', expand=True, padx=(0,8))
+        self.msg_input.bind('<Return>', lambda e: self.send())
+
+        ctk.CTkButton(input_frame, text='[ SEND ]', font=FONT_MONO, fg_color=BG_PANEL,
+                      hover_color='#1a4a1a', border_width=1, border_color=GREEN_DARK,
+                      text_color=GREEN_BRIGHT, width=100, command=self.send).pack(side='left')
+
+        #on close, send GROUP_LEAVE and remove from registry
+        self.win.protocol('WM_DELETE_WINDOW', self.on_close)
+
+    #function to send a message to the group
+    def send(self):
+        msg = self.msg_input.get()
+        if not msg: return
+        self.client_sock.send(f'GROUP_SEND {self.group_id} {msg}'.encode('ascii'))
+        self.msg_input.delete(0, 'end')
+
+    #function to display a message in the group chat box
+    def display(self, message):
+        self.chat_box.configure(state='normal')
+        is_sys = '[SYS]' in message
+        tag = 'sys' if is_sys else 'normal'
+        self.chat_box.tag_config('sys', foreground=GREEN_DARK)
+        self.chat_box.tag_config('normal', foreground=GREEN_BRIGHT)
+        self.chat_box.insert('end', message + '\n', tag)
+        self.chat_box.configure(state='disabled')
+        self.chat_box.see('end')
+
+    #function to handle window close — leave group and clean up registry
+    def on_close(self):
+        try:
+            self.client_sock.send(f'GROUP_LEAVE {self.group_id}'.encode('ascii'))
+        except:
+            pass
+        if self.group_id in self.registry:
+            del self.registry[self.group_id]
+        self.win.destroy()
 
 if __name__ == '__main__': #starts application if run directly
     app = ChatBuzzApp()

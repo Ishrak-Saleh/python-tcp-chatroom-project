@@ -9,7 +9,7 @@ sys.path.append('..') #for parent directory imports
 from datetime import datetime
 from server.state import clients, nicknames, broadcast, broadcast_userlist
 from config import MAX_BUFFER
-from server.commands import kick_user, ban_user, unban_user
+from server.commands import kick_user, ban_user, unban_user, group_invite, group_accept, group_leave, group_send
 from database.db import log_message
 
 #function for handling individual client connections
@@ -82,6 +82,35 @@ def handle(client):
                         client.send(f'[DM to {target}] {dm_msg}\n'.encode('ascii')) #send confirmation to sender
                     else:
                         client.send(f'[SYS] User "{target}" not found.\n'.encode('ascii')) #user offline or wrong name
+
+            #if message starts with GROUP_INVITE, user wants to create a group
+            elif message.startswith('GROUP_INVITE '):
+                targets = [t.strip() for t in message[13:].split(',')]
+                group_invite(sender, targets)
+
+            #if message starts with GROUP_ACCEPT, user accepted a group invite
+            elif message.startswith('GROUP_ACCEPT '):
+                group_id = message[13:].strip()
+                group_accept(group_id, sender)
+
+            #if message starts with GROUP_DECLINE, user declined invite
+            elif message.startswith('GROUP_DECLINE '):
+                group_id = message[14:].strip()
+                #notify group members that user declined
+                from server.state import groups, broadcast_group
+                if group_id in groups:
+                    broadcast_group(group_id, f'GROUP_MSG {group_id} [SYS] {sender} declined the invite.'.encode('ascii'))
+
+            #if message starts with GROUP_SEND, relay message to group
+            elif message.startswith('GROUP_SEND '):
+                parts = message[11:].split(' ', 1)
+                if len(parts) == 2:
+                    group_send(parts[0], sender, parts[1])
+
+            #if message starts with GROUP_LEAVE, remove user from group
+            elif message.startswith('GROUP_LEAVE '):
+                group_id = message[12:].strip()
+                group_leave(group_id, sender)
 
             #otherwise it's a normal chat message, broadcast to everyone
             else:
