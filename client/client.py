@@ -252,6 +252,27 @@ class ChatBuzzApp:
         dialog.wait_window()
         return result[0]
 
+    #function to display help menu in chat box, client-side only — no broadcast
+    def show_help(self):
+        is_admin = self.nickname == 'admin'
+        lines = [
+            '[SYS] -------- HELP --------',
+            '[SYS] /dm <user> <msg>   -- send a private message',
+            '[SYS] /help              -- show this menu',
+            #only show this part to admin
+            '[SYS] ------- ADMIN -------' if is_admin else None,
+            '[SYS] /kick <u1,u2,...>  -- kick user(s)' if is_admin else None,
+            '[SYS] /ban <u1,u2,...>   -- ban user(s)' if is_admin else None,
+            '[SYS] /unban <u1,u2,...> -- unban user(s)' if is_admin else None,
+            '[SYS] /banlist           -- show banned users' if is_admin else None,
+            '[SYS] -----------------------',
+        ]
+        for line in lines:
+            if line: #skip None entries (non-admin lines filtered out)
+                self.display_message(line)
+        self.message_input.delete(0, 'end') #clear input after showing help
+
+
     #function to send message to server
     def send_message(self):
         message = self.message_input.get()
@@ -272,6 +293,8 @@ class ChatBuzzApp:
             self.client.send(f'UNBAN {message[7:]}'.encode('ascii'))
         elif message.startswith('/banlist'): #translate banlist command to server protocol
             self.client.send('BANLIST'.encode('ascii'))
+        elif message.startswith('/help'): #show help menu locally, no server needed
+            self.show_help()
         else:
             self.client.send(f'{self.nickname}: {message}'.encode('ascii')) #send normal message with nickname prefix
 
