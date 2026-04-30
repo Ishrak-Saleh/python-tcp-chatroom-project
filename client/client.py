@@ -258,6 +258,8 @@ class ChatBuzzApp:
             self.client.send(f'BAN {message[5:]}'.encode('ascii'))
         elif message.startswith('/unban '): #translate unban command to server protocol
             self.client.send(f'UNBAN {message[7:]}'.encode('ascii'))
+        elif message.startswith('/banlist'): #translate banlist command to server protocol
+            self.client.send('BANLIST'.encode('ascii'))
         else:
             self.client.send(f'{self.nickname}: {message}'.encode('ascii')) #send normal message with nickname prefix
 
@@ -267,11 +269,12 @@ class ChatBuzzApp:
     def display_message(self, message):
         self.chat_box.configure(state='normal') #enable editing of chat box to insert new message
         #check if message is a system notification or join/leave event
-        is_sys = message.startswith('[SYS]') or 'joined the chat!' in message or 'left the chat!' in message
-        tag = 'sys' if is_sys else 'normal' # #assign tag name based on message type
-        #set text color for system messages
+        is_banlist = message.startswith('[SYS] Banned') or message.startswith('[SYS] No banned')
+        is_sys = (message.startswith('[SYS]') or 'joined the chat!' in message or 'left the chat!' in message) and not is_banlist
+        tag = 'banlist' if is_banlist else ('sys' if is_sys else 'normal')
         self.chat_box.tag_config('sys', foreground=GREEN_DARK)
         self.chat_box.tag_config('normal', foreground=GREEN_BRIGHT)
+        self.chat_box.tag_config('banlist', foreground=GREEN_BRIGHT)
         self.chat_box.insert('end', message + '\n', tag) #insert message at the end of the chat box, add newline for separation
         self.chat_box.configure(state='disabled') #disable editing of chat box to prevent user from changing messages
         self.chat_box.see('end') #scroll to the end of chat box to show latest message

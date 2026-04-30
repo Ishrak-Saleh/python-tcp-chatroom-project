@@ -28,13 +28,6 @@ def handle(client):
                     kick_user(name_to_kick) #calls from commands.py to kick user
                 else: client.send('You do not have permission to execute this command!'.encode('ascii'))
 
-            #if the message starts with ban, it's a ban command
-            elif message.startswith('BAN'):
-                if sender == 'admin':
-                    name_to_ban = message[4:] #gets the nickname to ban from the message
-                    ban_user(name_to_ban) #calls from commands.py to ban user
-                else: client.send('You do not have permission to execute this command!'.encode('ascii'))
-
             #if the message starts with unban, it's an unban command
             elif message.startswith('UNBAN'):
                 if sender == 'admin':
@@ -42,6 +35,27 @@ def handle(client):
                     unban_user(name_to_unban) #calls unban function from commands.py
                 else:
                     client.send('You do not have permission to execute this command!'.encode('ascii'))
+
+            #if the mssage starts with banlist, it's a banlist
+            elif message.startswith('BANLIST'):
+                if sender == 'admin':
+                    from database.db import get_banned_list
+                    banned = get_banned_list()
+                    if banned:
+                        result = '[SYS] Banned users: ' + ', '.join(banned)
+                    else:
+                        result = '[SYS] No banned users.'
+                    client.send(f'{result}\n'.encode('ascii')) #send only to admin
+                else:
+                    client.send('You do not have permission to execute this command!\n'.encode('ascii'))
+
+            
+            #if the message starts with ban, it's a ban command
+            elif message.startswith('BAN'):
+                if sender == 'admin':
+                    name_to_ban = message[4:] #gets the nickname to ban from the message
+                    ban_user(name_to_ban) #calls from commands.py to ban user
+                else: client.send('You do not have permission to execute this command!'.encode('ascii'))
 
             else:
                 timestamp = datetime.now().strftime('%H:%M') #get current time in HH:MM format

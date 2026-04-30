@@ -36,6 +36,14 @@ def is_banned(nickname):
     conn.close()
     return result is not None #return true is match found, else false
 
+#function to find list of users banned
+def get_banned_list():
+    conn = sqlite3.connect('chatbuzz.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT nickname FROM bans') #get all banned nicknames
+    rows = cursor.fetchall()
+    conn.close()
+    return [row[0] for row in rows] #return flat list of nicknames
 
 def remove_ban(nickname):
     conn = sqlite3.connect('chatbuzz.db')
