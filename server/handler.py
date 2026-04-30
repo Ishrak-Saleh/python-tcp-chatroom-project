@@ -24,15 +24,15 @@ def handle(client):
             #if the message starts with kick, it's a kick command
             if message.startswith('KICK'):
                 if sender == 'admin':
-                    name_to_kick = message[5:] #gets the nickname to kick from the message
-                    kick_user(name_to_kick) #calls from commands.py to kick user
+                    for name in [n.strip() for n in message[5:].split(',')]: #get all the nicknames to kick from the message
+                        kick_user(name) #calls from commands.py to kick user
                 else: client.send('You do not have permission to execute this command!'.encode('ascii'))
 
             #if the message starts with unban, it's an unban command
             elif message.startswith('UNBAN'):
                 if sender == 'admin':
-                    name_to_unban = message[6:] #gets the nickname to unban from the message
-                    unban_user(name_to_unban) #calls unban function from commands.py
+                    for name in [n.strip() for n in message[6:].split(',')]: #get all the nicknames to unban from the message
+                        unban_user(name) #calls unban function from commands.py
                 else:
                     client.send('You do not have permission to execute this command!'.encode('ascii'))
 
@@ -53,8 +53,8 @@ def handle(client):
             #if the message starts with ban, it's a ban command
             elif message.startswith('BAN'):
                 if sender == 'admin':
-                    name_to_ban = message[4:] #gets the nickname to ban from the message
-                    ban_user(name_to_ban) #calls from commands.py to ban user
+                    for name in [n.strip() for n in message[4:].split(',')]: #get all the nicknames to ban from the message
+                        ban_user(name) #calls from commands.py to ban user
                 else: client.send('You do not have permission to execute this command!'.encode('ascii'))
             
             #if the message starts with dm, it's a dm command
