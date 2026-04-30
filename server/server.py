@@ -1,5 +1,4 @@
 import sys
-import random
 sys.path.append('..') #for parent directory imports
 
 import socket
@@ -11,13 +10,6 @@ from server.state import clients, nicknames, broadcast, broadcast_userlist
 init_db() #creates the db on startup
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-#function to assign unique nickname if nickname already exists
-def assign_nickname(requested_name):
-    while True:
-        candidate = f"{requested_name}_{random.randint(1000, 9999)}" #append random 4 digit number
-        if candidate not in nicknames: #check if candidate nickname is unique
-            return candidate
 
 #function to receive incoming client connections
 def receive():
@@ -47,10 +39,13 @@ def receive():
                 client.send('INCORRECT_PASSWORD'.encode('ascii')) #send incorrect password message to client
                 client.close()
                 continue
-
-        if nickname != 'admin':
-            nickname = assign_nickname(nickname) #assign unique nickname number
-        client.send(f'ASSIGNED_NICKNAME:{nickname}'.encode('ascii')) #tell client their assigned nickname
+        
+        if nickname != 'admin': #regular users
+            if nickname in nicknames:
+                client.send('NICKNAME_TAKEN\n'.encode('ascii')) #send taken keyword to client
+                client.close()
+                continue
+        client.send(f'ASSIGNED_NICKNAME:{nickname}'.encode('ascii')) #send assigned nickname confirmation to client
 
         #add client and nickname to list
         nicknames.append(nickname)

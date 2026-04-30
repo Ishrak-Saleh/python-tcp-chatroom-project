@@ -168,6 +168,12 @@ class ChatBuzzApp:
                                     ))
                                     return
 
+                    elif message == 'NICKNAME_TAKEN':
+                        self.login_window.after(0, lambda: self.login_error.configure(
+                            text='[REFUSED] username already in chatroom'
+                        ))
+                        return
+
                     elif message == 'BAN': #server sent ban message, show error on login window and stop
                         self.client.close()
                         #show ban message on login window
