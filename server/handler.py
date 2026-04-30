@@ -3,6 +3,7 @@
 #executes commands if there are any, broadcasts normal messages to all clients
 
 import sys
+import time
 sys.path.append('..') #for parent directory imports
 
 from datetime import datetime
@@ -24,9 +25,16 @@ def handle(client):
             #if the message starts with kick, it's a kick command
             if message.startswith('KICK'):
                 if sender == 'admin':
-                    for name in [n.strip() for n in message[5:].split(',')]: #get all the nicknames to kick from the message
-                        kick_user(name) #calls from commands.py to kick user
-                else: client.send('You do not have permission to execute this command!'.encode('ascii'))
+                    targets = [n.strip() for n in message[5:].split(',')] #get all the nicknames to kick from the message
+                    targets_to_kick = [(n, clients[nicknames.index(n)]) for n in targets if n in nicknames] #snapshot name+socket pairs before any removals
+                    for name, sock in targets_to_kick: #send kick message to all targets first
+                        sock.send('You have been kicked from the server!\n'.encode('ascii'))
+                    time.sleep(0.05) #small delay to let messages flush before sockets close
+                    for name, _ in targets_to_kick: #now remove each target from the server
+                        if name in nicknames: #guard against race conditions
+                            kick_user(name)
+                else:
+                    client.send('You do not have permission to execute this command!\n'.encode('ascii'))
 
             #if the message starts with unban, it's an unban command
             elif message.startswith('UNBAN'):
@@ -34,54 +42,59 @@ def handle(client):
                     for name in [n.strip() for n in message[6:].split(',')]: #get all the nicknames to unban from the message
                         unban_user(name) #calls unban function from commands.py
                 else:
-                    client.send('You do not have permission to execute this command!'.encode('ascii'))
+                    client.send('You do not have permission to execute this command!\n'.encode('ascii'))
 
-            #if the mssage starts with banlist, it's a banlist
+            #if the message starts with banlist, it's a banlist command
             elif message.startswith('BANLIST'):
                 if sender == 'admin':
                     from database.db import get_banned_list
-                    banned = get_banned_list()
+                    banned = get_banned_list() #fetch list of banned users from database
                     if banned:
-                        result = '[SYS] Banned users: ' + ', '.join(banned)
+                        result = '[SYS] Banned users: ' + ', '.join(banned) #format list into readable string
                     else:
                         result = '[SYS] No banned users.'
-                    client.send(f'{result}\n'.encode('ascii')) #send only to admin
+                    client.send(f'{result}\n'.encode('ascii')) #send banlist only to admin
                 else:
                     client.send('You do not have permission to execute this command!\n'.encode('ascii'))
 
-            
             #if the message starts with ban, it's a ban command
             elif message.startswith('BAN'):
                 if sender == 'admin':
-                    for name in [n.strip() for n in message[4:].split(',')]: #get all the nicknames to ban from the message
-                        ban_user(name) #calls from commands.py to ban user
-                else: client.send('You do not have permission to execute this command!'.encode('ascii'))
-            
-            #if the message starts with dm, it's a dm command
-            elif message.startswith('DM '): #handle direct message command
+                    targets = [n.strip() for n in message[4:].split(',')] #get all the nicknames to ban from the message
+                    targets_to_ban = [(n, clients[nicknames.index(n)]) for n in targets if n in nicknames and n != 'admin'] #snapshot name+socket pairs, exclude admin
+                    for name, sock in targets_to_ban: #send ban message to all targets first
+                        sock.send('You have been banned from the server!\n'.encode('ascii'))
+                    time.sleep(0.05) #small delay to let messages flush before sockets close
+                    for name, _ in targets_to_ban: #now remove and ban each target
+                        if name in nicknames: #guard against race conditions
+                            ban_user(name)
+                else:
+                    client.send('You do not have permission to execute this command!\n'.encode('ascii'))
+
+            #if the message starts with dm, it's a direct message command
+            elif message.startswith('DM '):
                 parts = message[3:].split(' ', 1) #split into target nickname and message body
                 if len(parts) == 2:
                     target, dm_msg = parts
                     if target in nicknames: #check if target user is online
                         target_client = clients[nicknames.index(target)] #find target client socket
-                        target_client.send(f'[DM from {sender}] {dm_msg}\n'.encode('ascii')) #send to receiver
-                        client.send(f'[DM to {target}] {dm_msg}\n'.encode('ascii')) #confirm to sender
+                        target_client.send(f'[DM from {sender}] {dm_msg}\n'.encode('ascii')) #send dm to receiver
+                        client.send(f'[DM to {target}] {dm_msg}\n'.encode('ascii')) #send confirmation to sender
                     else:
                         client.send(f'[SYS] User "{target}" not found.\n'.encode('ascii')) #user offline or wrong name
 
+            #otherwise it's a normal chat message, broadcast to everyone
             else:
                 timestamp = datetime.now().strftime('%H:%M') #get current time in HH:MM format
                 broadcast(f'[{timestamp}] {message}'.encode('ascii')) #broadcast message with timestamp prefix
-
-                #log message to database, extract actual message by splitting, if format is [HH:MM] sender: message, else log whole message
-                log_message(sender, 'general', message.split(': ', 1)[1] if ': ' in message else message) 
+                log_message(sender, 'general', message.split(': ', 1)[1] if ': ' in message else message) #log message to database, extract content after sender prefix
 
         except:
-            index = clients.index(client) #find index of client that got disconnected
+            index = clients.index(client) #find index of client that disconnected
             nickname = nicknames[index] #find corresponding nickname using index
-            clients.remove(client)
-            client.close()
+            clients.remove(client) #remove client socket from list
+            client.close() #close the disconnected client connection
             broadcast(f'{nickname} left the chat!'.encode('ascii')) #broadcast that client has left
-            nicknames.remove(nickname)
-            broadcast_userlist() #update online list after user leaves
+            nicknames.remove(nickname) #remove nickname from list
+            broadcast_userlist() #update online user list for all clients
             break

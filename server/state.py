@@ -16,6 +16,6 @@ def broadcast_userlist():
     user_list = ','.join(sorted(nicknames)) #join all nicknames into a string
     for client in clients:
         try:
-            client.send(f'\nUSERLIST:{user_list}'.encode('ascii')) #send userlist to all clients
+            client.send(f'USERLIST:{user_list}\n'.encode('ascii')) #send userlist to all clients
         except:
             pass
