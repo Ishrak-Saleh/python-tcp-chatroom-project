@@ -320,7 +320,7 @@ class ChatBuzzApp:
             
             self.send_button = ctk.CTkButton(bottom_bar, text='SEND', font=FONT_MONO_SM, fg_color=BG_PANEL, hover_color='#1a4a1a', border_width=1, border_color=GREEN_DARK, text_color=GREEN_BRIGHT, width=70, command=self.send_message)
             self.send_button.pack(side='right', padx=10, pady=8)
-            ctk.CTkLabel(bottom_bar, text='/kick /ban /unban', font=FONT_MONO_SM, text_color=GREEN_DARK).pack(side='right', padx=4)
+            ctk.CTkLabel(bottom_bar, text='/help', font=FONT_MONO_SM, text_color=GREEN_DARK).pack(side='right', padx=4)
 
             #message input
             self.message_input = ctk.CTkEntry(bottom_bar, font=FONT_MONO_LG, fg_color=BG_PANEL, border_width=0, text_color=GREEN_BRIGHT, placeholder_text='type a message or /command...', placeholder_text_color=GREEN_DARK)
