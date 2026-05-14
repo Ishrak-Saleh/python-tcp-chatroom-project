@@ -10,19 +10,19 @@ CustomTkinter GUI, SQLite message history and a full admin permission system. St
 ## Screenshots
 
 
-**Login**
+###Login
 ![Login](screenshots/login.png)
 
-**Chat**
+###Chat
 ![Chat](screenshots/chat.png)
 
-**DM**
+###DM
 ![DM](screenshots/dm.png)
 
-**Kick**
+###Kick
 ![Kick](screenshots/kick.png)
 
-**Group Chat**
+###Group Chat
 ![Group Chat](screenshots/group_chat.png)
 
 ---
