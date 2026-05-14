@@ -9,6 +9,7 @@ CustomTkinter GUI, SQLite message history and a full admin permission system. St
 
 ## Screenshots
 
+
 **Login**
 ![Login](screenshots/login.png)
 
@@ -25,10 +26,6 @@ CustomTkinter GUI, SQLite message history and a full admin permission system. St
 ![Group Chat](screenshots/group_chat.png)
 
 ---
-
-## Stack
-
-
 ## Stack
 
 - Python 3.13.5
