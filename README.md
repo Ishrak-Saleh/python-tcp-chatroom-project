@@ -5,10 +5,7 @@ CustomTkinter GUI, SQLite message history and a full admin permission system. St
 
 ---
 
----
-
 ## Screenshots
-
 
 ### Login
 ![Login](screenshots/login.png)
